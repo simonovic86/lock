@@ -2,32 +2,76 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
-import { UnlockVault } from '@/components/UnlockVault';
-import { getVault } from '@/lib/storage';
-import type { Vault } from '@/types/vault';
+import { VaultCountdown } from '@/components/VaultCountdown';
+import { getVaultRef, VaultRef } from '@/lib/storage';
+import { fetchFromIPFS } from '@/lib/ipfs';
+import { initLit, decryptKey, isUnlockable } from '@/lib/lit';
+import { importKey, decryptToString } from '@/lib/crypto';
 
 interface VaultPageProps {
   params: Promise<{ id: string }>;
 }
 
+type State = 'loading' | 'not_found' | 'locked' | 'ready' | 'unlocking' | 'unlocked' | 'error';
+
 export default function VaultPage({ params }: VaultPageProps) {
   const { id } = use(params);
-  const [vault, setVault] = useState<Vault | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
+  const [state, setState] = useState<State>('loading');
+  const [vault, setVault] = useState<VaultRef | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState('');
+  const [decryptedSecret, setDecryptedSecret] = useState<string | null>(null);
 
   useEffect(() => {
-    getVault(id).then((v) => {
+    getVaultRef(id).then((v) => {
       if (v) {
         setVault(v);
+        setState(isUnlockable(v.unlockTime) ? 'ready' : 'locked');
       } else {
-        setNotFound(true);
+        setState('not_found');
       }
-      setLoading(false);
     });
   }, [id]);
 
-  if (loading) {
+  const handleUnlock = async () => {
+    if (!vault) return;
+
+    setState('unlocking');
+    setError(null);
+
+    try {
+      // Connect to Lit
+      setProgress('Connecting to Lit Network...');
+      await initLit();
+
+      // Get decryption key from Lit
+      setProgress('Retrieving decryption key...');
+      const rawKey = await decryptKey(
+        vault.litEncryptedKey,
+        vault.litKeyHash,
+        vault.unlockTime,
+      );
+
+      // Fetch encrypted data from IPFS
+      setProgress('Fetching from IPFS...');
+      const encryptedData = await fetchFromIPFS(vault.cid);
+
+      // Import key and decrypt
+      setProgress('Decrypting...');
+      const symmetricKey = await importKey(rawKey);
+      const secret = await decryptToString(encryptedData, symmetricKey);
+
+      setDecryptedSecret(secret);
+      setState('unlocked');
+    } catch (err) {
+      console.error('Unlock error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to unlock vault');
+      setState('error');
+    }
+  };
+
+  // Loading
+  if (state === 'loading') {
     return (
       <main className="min-h-screen flex items-center justify-center">
         <div className="animate-spin w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full" />
@@ -35,73 +79,172 @@ export default function VaultPage({ params }: VaultPageProps) {
     );
   }
 
-  if (notFound) {
+  // Not found
+  if (state === 'not_found') {
     return (
       <main className="min-h-screen flex items-center justify-center px-4">
-        <div className="text-center">
+        <div className="max-w-lg mx-auto p-6 rounded-2xl bg-zinc-900 border border-zinc-800 text-center">
           <div className="w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center mx-auto mb-4">
-            <svg
-              className="w-8 h-8 text-zinc-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
+            <svg className="w-8 h-8 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h1 className="text-xl font-semibold text-zinc-100 mb-2">
-            Vault Not Found
-          </h1>
+          <h1 className="text-xl font-semibold text-zinc-100 mb-2">Vault Not Found</h1>
           <p className="text-sm text-zinc-400 mb-6">
             This vault doesn&apos;t exist or was created on another device.
           </p>
-          <Link
-            href="/"
-            className="
-              inline-flex px-6 py-3 rounded-lg font-medium
-              bg-violet-600 text-white hover:bg-violet-500
-              transition-colors
-            "
-          >
-            Go Home
+          <Link href="/" className="inline-flex px-6 py-3 rounded-lg font-medium bg-violet-600 text-white hover:bg-violet-500 transition-colors">
+            Create a Vault
           </Link>
         </div>
       </main>
     );
   }
 
+  // Error
+  if (state === 'error') {
+    return (
+      <main className="min-h-screen py-12 px-4">
+        <div className="max-w-lg mx-auto mb-8">
+          <Link href="/" className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-200">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back
+          </Link>
+        </div>
+        <div className="max-w-lg mx-auto p-6 rounded-2xl bg-zinc-900 border border-zinc-800 text-center">
+          <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <h1 className="text-xl font-semibold text-zinc-100 mb-2">Unlock Failed</h1>
+          <p className="text-sm text-red-400 mb-6">{error}</p>
+          <button
+            onClick={() => setState('ready')}
+            className="px-6 py-3 rounded-lg font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  // Locked - show countdown
+  if (state === 'locked' && vault) {
+    return (
+      <main className="min-h-screen py-12 px-4">
+        <div className="max-w-lg mx-auto mb-8">
+          <Link href="/" className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-200">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back
+          </Link>
+        </div>
+        <div className="max-w-lg mx-auto p-6 rounded-2xl bg-zinc-900 border border-zinc-800">
+          <h2 className="text-xl font-semibold text-zinc-100 mb-2 text-center">
+            Time-Locked Vault
+          </h2>
+          <VaultCountdown
+            unlockTime={vault.unlockTime}
+            onUnlockReady={() => setState('ready')}
+          />
+          <div className="mt-6 p-3 rounded-lg bg-zinc-800 text-center">
+            <p className="text-xs text-zinc-500">IPFS CID</p>
+            <code className="text-xs text-zinc-400">{vault.cid}</code>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // Ready to unlock
+  if (state === 'ready' && vault) {
+    return (
+      <main className="min-h-screen py-12 px-4">
+        <div className="max-w-lg mx-auto mb-8">
+          <Link href="/" className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-200">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back
+          </Link>
+        </div>
+        <div className="max-w-lg mx-auto p-6 rounded-2xl bg-zinc-900 border border-zinc-800 text-center">
+          <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-zinc-100 mb-2">Ready to Unlock</h2>
+          <p className="text-sm text-zinc-400 mb-6">
+            This vault can now be opened. Click below to decrypt.
+          </p>
+          <button
+            onClick={handleUnlock}
+            className="w-full py-3 rounded-lg font-medium bg-emerald-600 text-white hover:bg-emerald-500 transition-colors"
+          >
+            Unlock Vault
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  // Unlocking
+  if (state === 'unlocking') {
+    return (
+      <main className="min-h-screen py-12 px-4">
+        <div className="max-w-lg mx-auto p-6 rounded-2xl bg-zinc-900 border border-zinc-800 text-center">
+          <div className="animate-spin w-12 h-12 border-3 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-zinc-100 mb-2">Unlocking Vault</h2>
+          <p className="text-sm text-zinc-400">{progress}</p>
+        </div>
+      </main>
+    );
+  }
+
+  // Unlocked
   return (
     <main className="min-h-screen py-12 px-4">
-      {/* Back link */}
       <div className="max-w-lg mx-auto mb-8">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors"
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
+        <Link href="/" className="inline-flex items-center gap-2 text-sm text-zinc-400 hover:text-zinc-200">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          Back to vaults
+          Back
         </Link>
       </div>
-
-      {/* Vault content */}
-      {vault && <UnlockVault vault={vault} />}
+      <div className="max-w-lg mx-auto p-6 rounded-2xl bg-zinc-900 border border-zinc-800">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
+            <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-zinc-100">Vault Unlocked</h2>
+            <p className="text-xs text-zinc-500">Decrypted successfully</p>
+          </div>
+        </div>
+        <div className="p-4 rounded-lg bg-zinc-800 border border-zinc-700">
+          <p className="text-sm text-zinc-300 whitespace-pre-wrap break-words">{decryptedSecret}</p>
+        </div>
+        <div className="mt-6 flex gap-3">
+          <button
+            onClick={() => navigator.clipboard.writeText(decryptedSecret || '')}
+            className="flex-1 py-3 rounded-lg font-medium bg-violet-600 text-white hover:bg-violet-500 transition-colors"
+          >
+            Copy Secret
+          </button>
+          <Link href="/" className="flex-1 py-3 rounded-lg font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-colors text-center">
+            Create Vault
+          </Link>
+        </div>
+      </div>
     </main>
   );
 }

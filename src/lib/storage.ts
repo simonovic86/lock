@@ -1,50 +1,60 @@
 /**
- * IndexedDB storage for vault metadata using idb-keyval
+ * Local storage for vault references using idb-keyval
+ * Stores vault metadata so user can find their vaults later
  */
 
 import { get, set, del, keys } from 'idb-keyval';
-import type { Vault } from '@/types/vault';
+
+export interface VaultRef {
+  id: string;
+  cid: string;
+  unlockTime: number;
+  litEncryptedKey: string;
+  litKeyHash: string;
+  createdAt: number;
+  name?: string;
+}
 
 const VAULT_PREFIX = 'vault:';
 
 /**
- * Save vault metadata to IndexedDB
+ * Save vault reference locally
  */
-export async function saveVault(vault: Vault): Promise<void> {
+export async function saveVaultRef(vault: VaultRef): Promise<void> {
   await set(`${VAULT_PREFIX}${vault.id}`, vault);
 }
 
 /**
- * Get vault by ID
+ * Get vault reference by ID
  */
-export async function getVault(id: string): Promise<Vault | undefined> {
+export async function getVaultRef(id: string): Promise<VaultRef | undefined> {
   return get(`${VAULT_PREFIX}${id}`);
 }
 
 /**
- * Delete vault by ID
+ * Delete vault reference
  */
-export async function deleteVault(id: string): Promise<void> {
+export async function deleteVaultRef(id: string): Promise<void> {
   await del(`${VAULT_PREFIX}${id}`);
 }
 
 /**
- * Get all vaults
+ * Get all saved vault references
  */
-export async function getAllVaults(): Promise<Vault[]> {
+export async function getAllVaultRefs(): Promise<VaultRef[]> {
   const allKeys = await keys();
   const vaultKeys = allKeys.filter(
     (key) => typeof key === 'string' && key.startsWith(VAULT_PREFIX),
   );
 
-  const vaults: Vault[] = [];
+  const vaults: VaultRef[] = [];
   for (const key of vaultKeys) {
-    const vault = await get<Vault>(key);
+    const vault = await get<VaultRef>(key);
     if (vault) {
       vaults.push(vault);
     }
   }
 
-  // Sort by creation time, newest first
   return vaults.sort((a, b) => b.createdAt - a.createdAt);
 }
+

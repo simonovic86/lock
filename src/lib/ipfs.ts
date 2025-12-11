@@ -1,118 +1,63 @@
 /**
- * IPFS storage using web3.storage (Storacha)
+ * IPFS storage via Pinata (free tier: 1GB)
  * 
- * Auth flow:
- * 1. Create client
- * 2. Login with email (sends verification)
- * 3. User clicks email link
- * 4. Create and provision a space
- * 5. Upload files
+ * Setup:
+ * 1. Create free account at https://pinata.cloud
+ * 2. Get API key from dashboard
+ * 3. Set NEXT_PUBLIC_PINATA_JWT environment variable
  */
 
-import * as Client from '@web3-storage/w3up-client';
-import { StoreMemory } from '@web3-storage/w3up-client/stores/memory';
-
-let client: Client.Client | null = null;
+const PINATA_API = 'https://api.pinata.cloud';
+const PINATA_GATEWAY = 'https://gateway.pinata.cloud/ipfs';
 
 /**
- * Get or create the web3.storage client
+ * Upload encrypted data to IPFS via Pinata
  */
-export async function getClient(): Promise<Client.Client> {
-  if (client) return client;
-  
-  // Use memory store - state persists only for session
-  // For production, use IndexedDB store for persistence
-  const store = new StoreMemory();
-  client = await Client.create({ store });
-  return client;
-}
+export async function uploadToIPFS(data: Uint8Array): Promise<string> {
+  const jwt = process.env.NEXT_PUBLIC_PINATA_JWT;
 
-/**
- * Check if user has a usable space
- */
-export async function hasActiveSpace(): Promise<boolean> {
-  const c = await getClient();
-  const spaces = c.spaces();
-  return spaces.length > 0 && c.currentSpace() !== undefined;
-}
-
-/**
- * Get auth status
- */
-export async function getAuthStatus(): Promise<{
-  hasAgent: boolean;
-  hasSpace: boolean;
-  currentSpace: string | null;
-}> {
-  const c = await getClient();
-  const spaces = c.spaces();
-  const current = c.currentSpace();
-  
-  return {
-    hasAgent: c.agent !== undefined,
-    hasSpace: spaces.length > 0,
-    currentSpace: current?.did() || null,
-  };
-}
-
-/**
- * Login with email - returns when verification is complete
- * User must click the email link for this to resolve
- */
-export async function loginWithEmail(email: string): Promise<void> {
-  const c = await getClient();
-  
-  // This sends email and waits for user to click verification link
-  const account = await c.login(email as `${string}@${string}`);
-  
-  // After login, check for existing spaces or create one
-  const spaces = c.spaces();
-  
-  if (spaces.length === 0) {
-    // Create a new space
-    const space = await c.createSpace('time-vault', { account });
-    
-    // Provision the space with the account's payment plan
-    await c.setCurrentSpace(space.did());
-  } else {
-    // Use existing space
-    await c.setCurrentSpace(spaces[0].did());
-  }
-}
-
-/**
- * Upload encrypted data to IPFS
- * Returns the CID
- */
-export async function uploadEncryptedBlob(data: Uint8Array): Promise<string> {
-  const c = await getClient();
-  
-  if (!c.currentSpace()) {
-    throw new Error('No space selected. Please authenticate first.');
+  if (!jwt) {
+    throw new Error(
+      'IPFS upload requires NEXT_PUBLIC_PINATA_JWT. ' +
+        'Get a free API key at https://pinata.cloud',
+    );
   }
 
-  // Create a fresh ArrayBuffer to avoid SharedArrayBuffer type issues
+  // Create ArrayBuffer copy to avoid SharedArrayBuffer issues
   const buffer = new ArrayBuffer(data.byteLength);
   new Uint8Array(buffer).set(data);
 
   const blob = new Blob([buffer], { type: 'application/octet-stream' });
-  const file = new File([blob], 'encrypted.bin', {
-    type: 'application/octet-stream',
+  const formData = new FormData();
+  formData.append('file', blob, 'vault.bin');
+
+  const response = await fetch(`${PINATA_API}/pinning/pinFileToIPFS`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+    },
+    body: formData,
   });
 
-  const cid = await c.uploadFile(file);
-  return cid.toString();
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`IPFS upload failed: ${error}`);
+  }
+
+  const result = await response.json();
+  return result.IpfsHash;
 }
 
 /**
- * Fetch encrypted data from IPFS via public gateway
+ * Fetch data from IPFS via public gateways
  */
-export async function fetchBlob(cid: string): Promise<Uint8Array> {
-  // Use multiple gateways for reliability
+export async function fetchFromIPFS(cid: string): Promise<Uint8Array> {
   const gateways = [
+    `${PINATA_GATEWAY}/${cid}`,
     `https://w3s.link/ipfs/${cid}`,
     `https://dweb.link/ipfs/${cid}`,
-    `https://${cid}.ipfs.w3s.link`,
+    `https://cloudflare-ipfs.com/ipfs/${cid}`,
+    `https://ipfs.io/ipfs/${cid}`,
   ];
 
   let lastError: Error | null = null;
@@ -121,21 +66,23 @@ export async function fetchBlob(cid: string): Promise<Uint8Array> {
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30000);
-      
+
       const response = await fetch(url, { signal: controller.signal });
       clearTimeout(timeout);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
+
       const buffer = await response.arrayBuffer();
       return new Uint8Array(buffer);
     } catch (error) {
       lastError = error as Error;
-      console.warn(`Failed to fetch from ${url}:`, error);
+      console.warn(`Gateway ${url} failed:`, error);
       continue;
     }
   }
 
   throw new Error(`Failed to fetch from IPFS: ${lastError?.message}`);
 }
+

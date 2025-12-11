@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Time-Locked Vault
 
-## Getting Started
+Lock any secret until a specific time. Fully decentralized, client-side encrypted.
 
-First, run the development server:
+## How It Works
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+1. **Encrypt**: Your secret is encrypted with AES-256-GCM in your browser
+2. **Store**: Encrypted data is uploaded to IPFS (decentralized storage)
+3. **Time-Lock**: The decryption key is secured via Lit Protocol with a time-based condition
+4. **Unlock**: After the unlock time, anyone with the vault link can decrypt
+
+**No servers. No databases. No backdoors.**
+
+## Tech Stack
+
+- **Frontend**: Next.js + TypeScript + Tailwind CSS
+- **Encryption**: AES-256-GCM (Web Crypto API)
+- **Storage**: IPFS via Pinata
+- **Time-Lock**: Lit Protocol
+
+## Setup
+
+1. Clone the repo
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Get a free Pinata API key:
+   - Sign up at https://pinata.cloud
+   - Go to API Keys → New Key
+   - Copy the JWT token
+
+4. Create `.env.local`:
+   ```
+   NEXT_PUBLIC_PINATA_JWT=your_jwt_token_here
+   ```
+
+5. Run the dev server:
+   ```bash
+   npm run dev
+   ```
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     User's Browser                       │
+├─────────────────────────────────────────────────────────┤
+│  Secret → AES-256-GCM Encrypt → Encrypted Blob          │
+│                                      │                   │
+│                                      ▼                   │
+│                              ┌──────────────┐            │
+│                              │    IPFS      │            │
+│                              │  (Pinata)    │            │
+│                              └──────────────┘            │
+│                                      │                   │
+│  Symmetric Key → Lit Protocol → Time-Locked Key         │
+│                                      │                   │
+│                              ┌──────────────┐            │
+│                              │ Lit Network  │            │
+│                              │ (Decentralized)│          │
+│                              └──────────────┘            │
+└─────────────────────────────────────────────────────────┘
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Security
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- All encryption happens client-side
+- Symmetric keys never leave your browser unencrypted
+- IPFS only stores encrypted blobs
+- Lit Protocol enforces time-based access control
+- No server-side code = no server-side attack surface
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## License
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+MIT
