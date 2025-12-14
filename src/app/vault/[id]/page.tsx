@@ -174,7 +174,7 @@ export default function VaultPage() {
           />
           <div className="mt-6 pt-4 border-t border-zinc-800 text-center">
             <a
-              href={`https://cid.ipfs.tech/#${vault.cid}`}
+              href={`https://explore.ipld.io/#/explore/${vault.cid}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
@@ -182,7 +182,7 @@ export default function VaultPage() {
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
-              View on IPFS Explorer
+              View on IPFS
             </a>
           </div>
         </div>
@@ -281,7 +281,7 @@ export default function VaultPage() {
         {vault && (
           <div className="mt-4 pt-4 border-t border-zinc-800 text-center">
             <a
-              href={`https://cid.ipfs.tech/#${vault.cid}`}
+              href={`https://explore.ipld.io/#/explore/${vault.cid}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
@@ -289,7 +289,7 @@ export default function VaultPage() {
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
-              View on IPFS Explorer
+              View on IPFS
             </a>
           </div>
         )}
