@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { VaultCountdown } from '@/components/VaultCountdown';
-import { getVaultRef, VaultRef } from '@/lib/storage';
+import { getVaultRef, deleteVaultRef, VaultRef } from '@/lib/storage';
 import { fetchFromIPFS, fromBase64 } from '@/lib/ipfs';
 import { initLit, decryptKey, isUnlockable } from '@/lib/lit';
 import { importKey, decryptToString } from '@/lib/crypto';
@@ -14,7 +14,7 @@ import { QRCodeModal } from '@/components/QRCode';
 import { getFriendlyError } from '@/lib/errors';
 import { getShareableUrl } from '@/lib/share';
 
-type State = 'loading' | 'not_found' | 'locked' | 'ready' | 'unlocking' | 'unlocked' | 'error';
+type State = 'loading' | 'not_found' | 'locked' | 'ready' | 'unlocking' | 'unlocked' | 'destroyed' | 'error';
 
 export default function VaultPage() {
   const params = useParams();
@@ -90,7 +90,31 @@ export default function VaultPage() {
       const secret = await decryptToString(encryptedData, symmetricKey);
 
       setDecryptedSecret(secret);
-      setState('unlocked');
+
+      // Handle destroy after read
+      if (vault.destroyAfterRead) {
+        setProgress('Destroying vault...');
+        
+        // Unpin from IPFS if stored there
+        if (vault.cid && !vault.inlineData) {
+          try {
+            await fetch('/api/unpin', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ cid: vault.cid }),
+            });
+          } catch (e) {
+            console.warn('Failed to unpin from IPFS:', e);
+          }
+        }
+        
+        // Delete from local storage
+        await deleteVaultRef(vault.id);
+        
+        setState('destroyed');
+      } else {
+        setState('unlocked');
+      }
     } catch (err) {
       console.error('Unlock error:', err);
       const friendlyError = getFriendlyError(err instanceof Error ? err : new Error(String(err)));
@@ -241,6 +265,41 @@ export default function VaultPage() {
           <p className="text-sm text-zinc-400">{progress}</p>
         </div>
       </main>
+    );
+  }
+
+  // Destroyed (burn after reading)
+  if (state === 'destroyed') {
+    return (
+      <>
+      {ToastComponent}
+      <main className="min-h-screen py-12 px-4">
+        <div className="max-w-lg mx-auto p-6 rounded-xl bg-zinc-900 border border-zinc-800">
+          <p className="text-xs text-red-500 mb-3">This vault has been destroyed</p>
+          <div className="p-4 rounded-lg bg-zinc-800">
+            <p className="text-sm text-zinc-200 whitespace-pre-wrap break-words">{decryptedSecret}</p>
+          </div>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(decryptedSecret || '');
+              showToast('Copied');
+            }}
+            className="w-full mt-4 py-2.5 rounded-lg font-medium bg-zinc-100 text-zinc-900 hover:bg-white transition-colors text-sm"
+          >
+            Copy
+          </button>
+          <p className="mt-4 text-xs text-zinc-600 text-center">
+            This secret cannot be accessed again. Save it now.
+          </p>
+          <Link 
+            href="/" 
+            className="block mt-3 text-center text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            Create another vault
+          </Link>
+        </div>
+      </main>
+      </>
     );
   }
 

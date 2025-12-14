@@ -15,6 +15,7 @@ interface ShareableData {
   t: number;  // unlockTime
   n?: string; // name (optional)
   d?: string; // inlineData (base64 encrypted data, for small vaults)
+  x?: boolean; // destroyAfterRead (burn after reading)
 }
 
 /**
@@ -36,6 +37,11 @@ export function encodeVaultForShare(vault: VaultRef): string {
   // Include inline data if present (for small vaults with no IPFS)
   if (vault.inlineData) {
     data.d = vault.inlineData;
+  }
+
+  // Include destroy flag if set
+  if (vault.destroyAfterRead) {
+    data.x = true;
   }
 
   // Use URL-safe base64
@@ -90,6 +96,7 @@ export function decodeVaultFromHash(hash: string, id: string): VaultRef | null {
       createdAt: 0, // Unknown for shared vaults
       name: data.n,
       inlineData: data.d,
+      destroyAfterRead: data.x,
     };
   } catch (error) {
     console.error('Failed to decode vault from hash:', error);
@@ -118,7 +125,7 @@ export function hasVaultDataInHash(): boolean {
 // Compact format for backup bundle
 interface BackupBundle {
   v: 1; // version
-  vaults: Array<ShareableData & { id: string; d?: string }>;
+  vaults: Array<ShareableData & { id: string }>;
 }
 
 /**
@@ -135,6 +142,7 @@ export function encodeBackupUrl(vaults: VaultRef[]): string {
       t: vault.unlockTime,
       n: vault.name,
       d: vault.inlineData,
+      x: vault.destroyAfterRead,
     })),
   };
 
@@ -185,6 +193,7 @@ export function decodeBackupFromHash(hash: string): VaultRef[] | null {
       createdAt: Date.now(), // Set to now when restoring
       name: data.n,
       inlineData: data.d,
+      destroyAfterRead: data.x,
     }));
   } catch (error) {
     console.error('Failed to decode backup:', error);

@@ -44,6 +44,7 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
   const [createdVault, setCreatedVault] = useState<VaultRef | null>(null);
   const [showQR, setShowQR] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [destroyAfterRead, setDestroyAfterRead] = useState(false);
   const { showToast, ToastComponent } = useToast();
 
   const hasContent = secretText.trim();
@@ -136,6 +137,7 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
         litKeyHash: encryptedKeyHash,
         createdAt: Date.now(),
         inlineData,
+        destroyAfterRead,
       };
 
       // Save locally for easy access
@@ -162,6 +164,7 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
     setError(null);
     setShowQR(false);
     setCaptchaToken(null);
+    setDestroyAfterRead(false);
   };
 
   const getVaultUrl = () => {
@@ -273,6 +276,17 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
 
         {/* Time selector */}
         <TimeSelector value={unlockTime} onChange={setUnlockTime} />
+
+        {/* Destroy after read toggle */}
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={destroyAfterRead}
+            onChange={(e) => setDestroyAfterRead(e.target.checked)}
+            className="w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-zinc-100 focus:ring-0 focus:ring-offset-0"
+          />
+          <span className="text-sm text-zinc-400">Destroy after reading</span>
+        </label>
 
         {/* CAPTCHA */}
         <div>

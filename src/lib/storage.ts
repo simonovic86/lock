@@ -14,6 +14,7 @@ export interface VaultRef {
   createdAt: number;
   name?: string;
   inlineData?: string;   // Base64 encrypted data (for small vaults, no IPFS needed)
+  destroyAfterRead?: boolean; // If true, vault is deleted after first unlock
 }
 
 // Threshold for inline storage (no IPFS upload)
