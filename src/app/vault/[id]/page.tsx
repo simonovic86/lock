@@ -10,7 +10,9 @@ import { initLit, decryptKey, isUnlockable } from '@/lib/lit';
 import { importKey, decryptToString } from '@/lib/crypto';
 import { decodeVaultFromHash } from '@/lib/share';
 import { useToast } from '@/components/Toast';
+import { QRCodeModal } from '@/components/QRCode';
 import { getFriendlyError } from '@/lib/errors';
+import { getShareableUrl } from '@/lib/share';
 
 type State = 'loading' | 'not_found' | 'locked' | 'ready' | 'unlocking' | 'unlocked' | 'error';
 
@@ -23,6 +25,7 @@ export default function VaultPage() {
   const [progress, setProgress] = useState('');
   const [decryptedSecret, setDecryptedSecret] = useState<string | null>(null);
   const [isSharedLink, setIsSharedLink] = useState(false);
+  const [showQR, setShowQR] = useState(false);
   const { showToast, ToastComponent } = useToast();
 
   useEffect(() => {
@@ -172,7 +175,16 @@ export default function VaultPage() {
             unlockTime={vault.unlockTime}
             onUnlockReady={() => setState('ready')}
           />
-          <div className="mt-6 pt-4 border-t border-zinc-800 text-center">
+          <div className="mt-6 pt-4 border-t border-zinc-800 flex justify-center gap-4">
+            <button
+              onClick={() => setShowQR(true)}
+              className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h2M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+              </svg>
+              Share QR
+            </button>
             <a
               href={`https://explore.ipld.io/#/explore/${vault.cid}`}
               target="_blank"
@@ -186,6 +198,11 @@ export default function VaultPage() {
             </a>
           </div>
         </div>
+        <QRCodeModal
+          url={getShareableUrl(vault)}
+          isOpen={showQR}
+          onClose={() => setShowQR(false)}
+        />
       </main>
     );
   }
@@ -218,7 +235,21 @@ export default function VaultPage() {
           >
             Unlock Vault
           </button>
+          <button
+            onClick={() => setShowQR(true)}
+            className="mt-3 w-full py-2 rounded-lg text-sm text-zinc-400 hover:text-zinc-200 transition-colors flex items-center justify-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h2M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+            </svg>
+            Share via QR
+          </button>
         </div>
+        <QRCodeModal
+          url={getShareableUrl(vault)}
+          isOpen={showQR}
+          onClose={() => setShowQR(false)}
+        />
       </main>
     );
   }

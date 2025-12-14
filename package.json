@@ -12,10 +12,12 @@
     "@lit-protocol/constants": "^8.0.8",
     "@lit-protocol/encryption": "^7.3.1",
     "@lit-protocol/lit-node-client": "^7.3.1",
+    "@types/qrcode": "^1.5.6",
     "@web3-storage/w3up-client": "^17.3.0",
     "ethers": "^6.16.0",
     "idb-keyval": "^6.2.2",
     "next": "16.0.8",
+    "qrcode": "^1.5.4",
     "react": "19.2.1",
     "react-dom": "19.2.1",
     "uuid": "^13.0.0"

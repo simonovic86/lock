@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { TimeSelector } from './TimeSelector';
 import { useToast } from './Toast';
+import { QRCodeModal } from './QRCode';
 import { generateKey, exportKey, encrypt } from '@/lib/crypto';
 import { initLit, encryptKeyWithTimelock } from '@/lib/lit';
 import { uploadToIPFS } from '@/lib/ipfs';
@@ -24,6 +25,7 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState('');
   const [createdVault, setCreatedVault] = useState<VaultRef | null>(null);
+  const [showQR, setShowQR] = useState(false);
   const { showToast, ToastComponent } = useToast();
 
   const hasContent = secretText.trim();
@@ -90,6 +92,7 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
     setCreatedVault(null);
     setProgress('');
     setError(null);
+    setShowQR(false);
   };
 
   const getVaultUrl = () => {
@@ -145,12 +148,27 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
             Copy Link
           </button>
           <button
+            onClick={() => setShowQR(true)}
+            className="py-3 px-4 rounded-lg bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-colors"
+            title="Show QR Code"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h2M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+            </svg>
+          </button>
+          <button
             onClick={handleReset}
             className="flex-1 py-3 rounded-lg font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-colors"
           >
             Create Another
           </button>
         </div>
+
+        <QRCodeModal
+          url={getVaultUrl()}
+          isOpen={showQR}
+          onClose={() => setShowQR(false)}
+        />
 
         <div className="mt-6 pt-4 border-t border-zinc-800">
           <p className="text-xs text-zinc-500 mb-2">
