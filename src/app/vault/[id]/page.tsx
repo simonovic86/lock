@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect } from 'react';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { VaultCountdown } from '@/components/VaultCountdown';
 import { getVaultRef, VaultRef } from '@/lib/storage';
@@ -8,14 +9,11 @@ import { fetchFromIPFS } from '@/lib/ipfs';
 import { initLit, decryptKey, isUnlockable } from '@/lib/lit';
 import { importKey, decryptToString } from '@/lib/crypto';
 
-interface VaultPageProps {
-  params: Promise<{ id: string }>;
-}
-
 type State = 'loading' | 'not_found' | 'locked' | 'ready' | 'unlocking' | 'unlocked' | 'error';
 
-export default function VaultPage({ params }: VaultPageProps) {
-  const { id } = use(params);
+export default function VaultPage() {
+  const params = useParams();
+  const id = params.id as string;
   const [state, setState] = useState<State>('loading');
   const [vault, setVault] = useState<VaultRef | null>(null);
   const [error, setError] = useState<string | null>(null);

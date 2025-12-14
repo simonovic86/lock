@@ -13,6 +13,7 @@
     "@lit-protocol/encryption": "^7.3.1",
     "@lit-protocol/lit-node-client": "^7.3.1",
     "@web3-storage/w3up-client": "^17.3.0",
+    "ethers": "^6.16.0",
     "idb-keyval": "^6.2.2",
     "next": "16.0.8",
     "react": "19.2.1",

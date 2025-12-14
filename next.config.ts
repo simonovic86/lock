@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "export",
-  // Disable image optimization for static export
+  // Remove static export for now - dynamic routes need server
+  // For static deployment, use URL-based vault encoding instead
   images: {
     unoptimized: true,
   },
