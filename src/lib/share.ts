@@ -102,3 +102,78 @@ export function hasVaultDataInHash(): boolean {
   return hash.length > 10; // Minimum reasonable length for encoded data
 }
 
+// Compact format for backup bundle
+interface BackupBundle {
+  v: 1; // version
+  vaults: Array<ShareableData & { id: string }>;
+}
+
+/**
+ * Encode all vaults into a backup URL
+ */
+export function encodeBackupUrl(vaults: VaultRef[]): string {
+  const bundle: BackupBundle = {
+    v: 1,
+    vaults: vaults.map((vault) => ({
+      id: vault.id,
+      c: vault.cid,
+      k: vault.litEncryptedKey,
+      h: vault.litKeyHash,
+      t: vault.unlockTime,
+      n: vault.name,
+    })),
+  };
+
+  const json = JSON.stringify(bundle);
+  const base64 = btoa(json)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+
+  const base = typeof window !== 'undefined' ? window.location.origin : '';
+  return `${base}/restore#${base64}`;
+}
+
+/**
+ * Decode backup bundle from URL hash
+ */
+export function decodeBackupFromHash(hash: string): VaultRef[] | null {
+  try {
+    if (!hash || hash.length < 2) return null;
+
+    // Remove leading # if present
+    let base64 = hash.startsWith('#') ? hash.slice(1) : hash;
+
+    // Restore URL-safe base64 to standard
+    base64 = base64
+      .replace(/-/g, '+')
+      .replace(/_/g, '/');
+
+    // Add padding if needed
+    while (base64.length % 4) {
+      base64 += '=';
+    }
+
+    const json = atob(base64);
+    const bundle: BackupBundle = JSON.parse(json);
+
+    // Validate version
+    if (bundle.v !== 1 || !Array.isArray(bundle.vaults)) {
+      return null;
+    }
+
+    return bundle.vaults.map((data) => ({
+      id: data.id,
+      cid: data.c,
+      litEncryptedKey: data.k,
+      litKeyHash: data.h,
+      unlockTime: data.t,
+      createdAt: Date.now(), // Set to now when restoring
+      name: data.n,
+    }));
+  } catch (error) {
+    console.error('Failed to decode backup:', error);
+    return null;
+  }
+}
+

@@ -3,12 +3,15 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { CreateVaultForm } from '@/components/CreateVaultForm';
+import { useToast } from '@/components/Toast';
 import { getAllVaultRefs, VaultRef } from '@/lib/storage';
 import { isUnlockable } from '@/lib/lit';
+import { encodeBackupUrl } from '@/lib/share';
 
 export default function Home() {
   const [vaults, setVaults] = useState<VaultRef[]>([]);
   const [loading, setLoading] = useState(true);
+  const { showToast, ToastComponent } = useToast();
 
   useEffect(() => {
     getAllVaultRefs().then((v) => {
@@ -21,7 +24,15 @@ export default function Home() {
     setVaults((prev) => [vault, ...prev]);
   };
 
+  const handleBackup = async () => {
+    const backupUrl = encodeBackupUrl(vaults);
+    await navigator.clipboard.writeText(backupUrl);
+    showToast('Backup link copied!');
+  };
+
   return (
+    <>
+    {ToastComponent}
     <main className="min-h-screen py-12 px-4">
       {/* Header */}
       <header className="max-w-lg mx-auto text-center mb-12">
@@ -55,9 +66,20 @@ export default function Home() {
       {/* Saved vaults */}
       {!loading && vaults.length > 0 && (
         <section className="max-w-lg mx-auto mt-12">
-          <h2 className="text-lg font-semibold text-zinc-300 mb-4">
-            Your Vaults
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-zinc-300">
+              Your Vaults
+            </h2>
+            <button
+              onClick={handleBackup}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+              </svg>
+              Backup
+            </button>
+          </div>
           <div className="space-y-3">
             {vaults.map((vault) => {
               const unlockable = isUnlockable(vault.unlockTime);
@@ -136,5 +158,6 @@ export default function Home() {
         </p>
       </footer>
     </main>
+    </>
   );
 }
