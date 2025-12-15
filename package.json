@@ -4,9 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:turbo": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "stop": "lsof -ti:3000 | xargs kill -9 2>/dev/null || echo 'No server running on port 3000'",
+    "restart": "npm run stop && npm run dev",
+    "status": "lsof -i:3000 || echo 'No server running on port 3000'"
   },
   "dependencies": {
     "@lit-protocol/constants": "^8.0.8",
