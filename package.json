@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:turbo": "next dev --turbopack",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "stop": "lsof -ti:3000 | xargs kill -9 2>/dev/null || echo 'No server running on port 3000'",

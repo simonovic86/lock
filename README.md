@@ -128,22 +128,22 @@ npm run lint      # Run linter
 
 ### Deploy
 
-The app exports as static HTML/JS. After building, the `/out` folder can be deployed anywhere:
+The app has no API routes - all logic runs client-side. Deploy to any Next.js-compatible host:
 
 ```bash
 npm run build
-# Deploy the /out folder to any static host
+# Deploy to Vercel, Netlify, or similar
 ```
 
 **Free hosting options:**
 
 | Platform | How to deploy |
 |----------|---------------|
-| **GitHub Pages** | Push `/out` to `gh-pages` branch |
-| **Netlify** | Drag and drop `/out` folder |
-| **Cloudflare Pages** | Connect repo, set build command to `npm run build` |
-| **Vercel** | Connect repo (auto-detected) |
-| **IPFS** | Pin `/out` folder with Pinata or web3.storage |
+| **Vercel** | Connect repo (auto-detected, recommended) |
+| **Netlify** | Connect repo, Next.js auto-detected |
+| **Cloudflare Pages** | Connect repo, set framework to Next.js |
+
+> **Note:** Pure static export (`next export`) is not supported due to Lit Protocol SDK bundling requirements. Use a Next.js-compatible host instead.
 
 ### Architecture
 
