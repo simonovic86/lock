@@ -1,19 +1,17 @@
 /**
- * IPFS storage via Pinata
+ * IPFS storage via server-side Pinata upload
  * 
  * For small vaults (<8KB), data is stored inline in the URL — no IPFS needed!
- * For larger vaults, we use Pinata for IPFS storage.
- * 
- * Setup:
- * 1. Create free account at https://pinata.cloud
- * 2. Get API key from dashboard
- * 3. Set NEXT_PUBLIC_PINATA_JWT environment variable
+ * For larger vaults, we upload via /api/upload which handles:
+ * - Server-side Pinata upload (JWT hidden from client)
+ * - Rate limiting (5 uploads per IP per hour)
+ * - Size validation (max 1MB)
+ * - CAPTCHA verification
  */
 
 import { withRetry } from './retry';
 import { INLINE_DATA_THRESHOLD } from './storage';
 
-const PINATA_API = 'https://api.pinata.cloud';
 const PINATA_GATEWAY = 'https://gateway.pinata.cloud/ipfs';
 
 /**
@@ -54,26 +52,16 @@ export function shouldUseInlineStorage(data: Uint8Array): boolean {
 }
 
 /**
- * Upload encrypted data to IPFS via Pinata (with retry)
+ * Upload encrypted data to IPFS via server API
+ * 
+ * @param data - Encrypted data to upload
+ * @param captchaToken - CAPTCHA token for verification
+ * @returns IPFS CID
  */
-export async function uploadToIPFS(data: Uint8Array): Promise<string> {
-  const jwt = process.env.NEXT_PUBLIC_PINATA_JWT;
-
-  if (!jwt) {
-    throw new Error(
-      'IPFS upload requires Pinata API key. ' +
-      'Set NEXT_PUBLIC_PINATA_JWT in your environment. ' +
-      'Get a free key at https://pinata.cloud',
-    );
-  }
-
-  return uploadToPinata(data, jwt);
-}
-
-/**
- * Upload to Pinata
- */
-async function uploadToPinata(data: Uint8Array, jwt: string): Promise<string> {
+export async function uploadToIPFS(
+  data: Uint8Array,
+  captchaToken: string,
+): Promise<string> {
   return withRetry(
     async () => {
       const buffer = new ArrayBuffer(data.byteLength);
@@ -82,27 +70,25 @@ async function uploadToPinata(data: Uint8Array, jwt: string): Promise<string> {
       const blob = new Blob([buffer], { type: 'application/octet-stream' });
       const formData = new FormData();
       formData.append('file', blob, 'vault.bin');
+      formData.append('captchaToken', captchaToken);
 
-      const response = await fetch(`${PINATA_API}/pinning/pinFileToIPFS`, {
+      const response = await fetch('/api/upload', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${jwt}`,
-        },
         body: formData,
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`Pinata upload failed (${response.status}): ${text}`);
+        throw new Error(result.error || `Upload failed (${response.status})`);
       }
 
-      const result = await response.json();
-      return result.IpfsHash;
+      return result.cid;
     },
     {
       maxAttempts: 3,
       onRetry: (attempt, error) => {
-        console.warn(`Pinata upload retry ${attempt}:`, error.message);
+        console.warn(`Upload retry ${attempt}:`, error.message);
       },
     },
   );
@@ -145,4 +131,3 @@ export async function fetchFromIPFS(cid: string): Promise<Uint8Array> {
 
   throw new Error(`Failed to fetch from IPFS: ${lastError?.message}`);
 }
-

@@ -55,7 +55,9 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
   // Estimate storage mode (encrypted data is ~1.5x larger due to IV + base64)
   const estimatedSize = new TextEncoder().encode(secretText).length * 1.5;
   const willUseIPFS = estimatedSize > INLINE_DATA_THRESHOLD;
-  const hasPinataKey = !!process.env.NEXT_PUBLIC_PINATA_JWT;
+  // Server handles Pinata uploads now - always show IPFS option
+  // Rate limiting and size caps are enforced server-side
+  const hasPinataKey = true;
 
   const handleCaptchaVerify = useCallback((token: string) => {
     setCaptchaToken(token);
@@ -112,10 +114,10 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
         inlineData = toBase64(encryptedData);
         await minDelay(400); // Quick since no network call
       } else {
-        // Upload to IPFS for larger vaults
+        // Upload to IPFS for larger vaults (requires captcha token)
         setCurrentProgressStep('ipfs');
         const [uploadedCid] = await Promise.all([
-          uploadToIPFS(encryptedData),
+          uploadToIPFS(encryptedData, captchaToken),
           minDelay(600),
         ]);
         cid = uploadedCid;

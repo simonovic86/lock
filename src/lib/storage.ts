@@ -21,6 +21,9 @@ export interface VaultRef {
 // Keep small to avoid URL length issues
 export const INLINE_DATA_THRESHOLD = 8 * 1024; // 8KB
 
+// Maximum vault size for IPFS uploads (prevents storage abuse)
+export const MAX_VAULT_SIZE = 1 * 1024 * 1024; // 1MB
+
 const VAULT_PREFIX = 'vault:';
 
 /**

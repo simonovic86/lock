@@ -78,12 +78,14 @@ For larger vaults, set up Pinata:
 
 1. Create free account at [pinata.cloud](https://pinata.cloud)
 2. Go to API Keys in dashboard
-3. Create new key with "pinFileToIPFS" permission
+3. Create new key with "pinFileToIPFS" and "unpin" permissions
 4. Add to `.env.local`:
 
 ```env
-NEXT_PUBLIC_PINATA_JWT=your_jwt_token_here
+PINATA_JWT=your_jwt_token_here
 ```
+
+> **Note:** The JWT is server-only (not exposed to clients). Uploads are rate-limited to 5 per IP per hour with a 1MB max file size.
 
 ### Get Cloudflare Turnstile Keys (Anti-Abuse)
 

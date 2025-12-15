@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const jwt = process.env.PINATA_JWT || process.env.NEXT_PUBLIC_PINATA_JWT;
+    const jwt = process.env.PINATA_JWT;
     
     if (!jwt) {
       // No JWT configured - just return success
