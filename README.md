@@ -9,12 +9,12 @@ A fully decentralized app to lock secrets until a specific time. No accounts, no
 │   Secret    │────▶│  Encrypted  │────▶│    IPFS     │
 │  (client)   │     │  AES-256    │     │  (Pinata)   │
 └─────────────┘     └─────────────┘     └─────────────┘
-                           │
-                           ▼
-                    ┌─────────────┐
-                    │ Lit Protocol│
-                    │ Time-Lock   │
-                    └─────────────┘
+                          │
+                          ▼
+                   ┌─────────────┐
+                   │ Lit Protocol│
+                   │ Time-Lock   │
+                   └─────────────┘
 ```
 
 1. **Encrypt** - Your secret is encrypted client-side with AES-256-GCM
@@ -30,8 +30,11 @@ A fully decentralized app to lock secrets until a specific time. No accounts, no
 ## Features
 
 - **Text secrets** - Lock any message
+- **Vault naming** - Give your vaults memorable names
 - **Time presets** - 1 hour, 24 hours, 7 days, 30 days, or custom
+- **Destroy after read** - Self-destructing vaults that delete after first unlock
 - **Shareable links** - Links work on any device (vault data encoded in URL)
+- **QR codes** - Scan to share vault links
 - **Backup/Restore** - Export all vaults to a single link, restore on any browser
 - **Verify on IPFS** - View your encrypted data on the public IPFS network
 - **No accounts** - Just create and share
@@ -41,12 +44,12 @@ A fully decentralized app to lock secrets until a specific time. No accounts, no
 
 | Component | Technology |
 |-----------|------------|
-| Frontend | Next.js 15 + TypeScript + Tailwind CSS |
+| Frontend | Next.js 16 + TypeScript + Tailwind CSS |
 | Encryption | Web Crypto API (AES-256-GCM) |
 | Storage | URL-inline (small <8KB) or IPFS via Pinata (large) |
 | Time-Lock | Lit Protocol (datil-dev network) |
 | Local Data | IndexedDB (idb-keyval) |
-| Anti-Abuse | Cloudflare Turnstile (optional) |
+| Anti-Abuse | Cloudflare Turnstile + Rate Limiting |
 
 ## Setup
 
@@ -65,9 +68,9 @@ cd lock
 # Install dependencies
 npm install
 
-# Configure Pinata
+# Configure environment
 cp .env.example .env.local
-# Edit .env.local and add your Pinata JWT token
+# Edit .env.local and add your API keys
 ```
 
 ### Get Pinata API Key (for large vaults)
@@ -112,10 +115,12 @@ Open [http://localhost:3000](http://localhost:3000)
 
 ### Create a Vault
 
-1. Enter your secret message
-2. Select unlock time (or use Custom for specific date/time)
-3. Click "Lock Secret"
-4. Copy the shareable link
+1. (Optional) Give your vault a name
+2. Enter your secret message
+3. Select unlock time (or use Custom for specific date/time)
+4. (Optional) Enable "Destroy after reading" for self-destructing vaults
+5. Click "Lock Secret"
+6. Copy the shareable link or scan the QR code
 
 ### Unlock a Vault
 
@@ -123,6 +128,8 @@ Open [http://localhost:3000](http://localhost:3000)
 2. Wait for countdown (if still locked)
 3. Click "Unlock Vault"
 4. View your decrypted secret
+
+> **Note:** If the vault has "Destroy after reading" enabled, you'll see a confirmation warning before unlocking.
 
 ### Backup Your Vaults
 
@@ -134,25 +141,62 @@ Open [http://localhost:3000](http://localhost:3000)
 
 Click "View on IPFS" to see your encrypted data exists on the public IPFS network via the [IPLD Explorer](https://explore.ipld.io).
 
-## Architecture
+## Development
+
+### Commands
+
+Using **Make** (recommended):
+
+| Command | Description |
+|---------|-------------|
+| `make dev` | Start development server |
+| `make stop` | Stop server on port 3000 |
+| `make restart` | Stop + start dev server |
+| `make status` | Check if server is running |
+| `make build` | Build for production |
+| `make lint` | Run ESLint |
+| `make clean` | Remove .next and node_modules |
+| `make help` | Show all commands |
+
+Using **npm**:
+
+```bash
+npm run dev       # Start dev server
+npm run stop      # Stop server on port 3000
+npm run restart   # Stop + start
+npm run status    # Check if running
+npm run build     # Production build
+npm run lint      # Run linter
+```
+
+### Architecture
 
 ```
 src/
 ├── app/
 │   ├── page.tsx          # Home - create vault + vault list
 │   ├── vault/[id]/       # View/unlock individual vault
-│   └── restore/          # Restore vaults from backup link
+│   ├── restore/          # Restore vaults from backup link
+│   └── api/
+│       ├── upload/       # Server-side IPFS upload with rate limiting
+│       ├── unpin/        # Remove vault from IPFS
+│       └── verify-captcha/ # CAPTCHA verification
 ├── components/
 │   ├── CreateVaultForm   # Main form for creating vaults
 │   ├── TimeSelector      # Time picker component
 │   ├── VaultCountdown    # Countdown timer display
-│   └── Toast             # Notification component
+│   ├── ConfirmModal      # Confirmation dialogs
+│   ├── ErrorBoundary     # Global error handling
+│   ├── QRCode            # QR code generator
+│   ├── Toast             # Notification component
+│   └── Turnstile         # CAPTCHA widget
 └── lib/
     ├── crypto.ts         # AES-256-GCM encryption
-    ├── ipfs.ts           # Pinata IPFS upload/fetch
+    ├── ipfs.ts           # IPFS upload/fetch via server API
     ├── lit.ts            # Lit Protocol time-lock
     ├── storage.ts        # IndexedDB vault storage
     ├── share.ts          # URL encoding for sharing
+    ├── rate-limit.ts     # In-memory rate limiting
     ├── retry.ts          # Retry logic for network calls
     └── errors.ts         # User-friendly error messages
 ```
@@ -162,6 +206,7 @@ src/
 ### What's encrypted?
 - Your secret is encrypted with a random AES-256-GCM key
 - The key is then encrypted by Lit Protocol with time-based access control
+- Decrypted secrets are cleared from memory when you navigate away
 
 ### What's stored where?
 
@@ -177,6 +222,15 @@ src/
 - Your decryption key
 - Your vault list (stored locally)
 
+### Abuse Prevention
+
+| Protection | Implementation |
+|------------|----------------|
+| CAPTCHA | Cloudflare Turnstile (optional) |
+| Rate Limiting | 5 uploads per IP per hour |
+| Size Limit | 1MB max per vault |
+| Server-side JWT | Pinata key not exposed to clients |
+
 ### Trust assumptions:
 - **Lit Protocol** - Decentralized network enforces time-lock honestly
 - **IPFS/Pinata** - Data remains available (pinned by Pinata)
@@ -184,23 +238,11 @@ src/
 
 ## Limitations
 
-- **Max secret size** - Limited by IPFS upload (~10MB on free Pinata tier)
+- **Max secret size** - 1MB per vault (rate-limited to prevent abuse)
 - **Time accuracy** - Depends on blockchain timestamp (±minutes)
 - **Data persistence** - Relies on Pinata pinning; unpinned data may disappear
 - **Network required** - Need internet to create/unlock vaults
-
-## Development
-
-```bash
-# Run dev server
-npm run dev
-
-# Build for production
-npm run build
-
-# Lint
-npm run lint
-```
+- **Rate limits** - 5 IPFS uploads per hour per IP address
 
 ## License
 
