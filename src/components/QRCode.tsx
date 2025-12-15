@@ -57,7 +57,7 @@ export function QRCodeModal({ url, isOpen, onClose }: QRCodeModalProps) {
       onClick={onClose}
     >
       <div 
-        className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 max-w-sm mx-4 animate-fade-in"
+        className="bg-[#111113] border border-zinc-800/50 rounded-xl shadow-lg shadow-black/20 p-6 max-w-sm mx-4 animate-fade-in"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">

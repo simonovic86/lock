@@ -150,10 +150,10 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
     return (
       <>
       {ToastComponent}
-      <div className="max-w-lg mx-auto p-6 rounded-2xl bg-zinc-900 border border-zinc-800 text-center animate-fade-in">
-        <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
+      <div className="card max-w-lg mx-auto p-6 text-center animate-fade-in">
+        <div className="icon-container-lg mx-auto mb-4">
           <svg
-            className="w-8 h-8 text-emerald-400"
+            className="w-8 h-8 text-zinc-300"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -161,7 +161,7 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
-              strokeWidth={2}
+              strokeWidth={1.5}
               d="M5 13l4 4L19 7"
             />
           </svg>
@@ -172,15 +172,15 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
         <p className="text-sm text-zinc-400 mb-6">
           Your secret is locked until {unlockTime?.toLocaleString()}
           {createdVault.destroyAfterRead && (
-            <span className="block mt-1 text-amber-400">
-              ⚠ This vault will be destroyed after reading
+            <span className="block mt-1 text-zinc-500">
+              This vault will be destroyed after reading
             </span>
           )}
         </p>
 
-        <div className="p-4 rounded-lg bg-zinc-800 mb-6 text-left">
+        <div className="card-inner p-4 mb-6 text-left">
           <p className="text-xs text-zinc-500 mb-1">Shareable Link</p>
-          <code className="text-sm text-violet-400 break-all">
+          <code className="text-sm text-zinc-300 break-all">
             {getVaultUrl()}
           </code>
         </div>
@@ -188,13 +188,13 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
         <div className="flex gap-3">
           <button
             onClick={handleCopy}
-            className="flex-1 py-3 rounded-lg font-medium bg-violet-600 text-white hover:bg-violet-500 transition-colors"
+            className="btn-primary flex-1"
           >
             Copy Link
           </button>
           <button
             onClick={() => setShowQR(true)}
-            className="py-3 px-4 rounded-lg bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-colors"
+            className="btn-secondary px-4"
             title="Show QR Code"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -205,7 +205,7 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
         
         <button
           onClick={handleReset}
-          className="w-full mt-3 py-2 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+          className="btn-ghost w-full mt-3"
         >
           Done — Create Another
         </button>
@@ -217,28 +217,28 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
         />
 
         {/* Verification badges */}
-        <div className="mt-6 pt-4 border-t border-zinc-800">
+        <div className="mt-6 pt-4 border-t border-zinc-800/50">
           <div className="grid grid-cols-1 gap-2 text-left mb-4">
             <div className="flex items-center gap-2 text-xs">
-              <svg className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
               <span className="text-zinc-400">Encrypted in your browser</span>
             </div>
             <div className="flex items-center gap-2 text-xs">
-              <svg className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
               <span className="text-zinc-400">Stored in shareable link (no external service)</span>
             </div>
             <div className="flex items-center gap-2 text-xs">
-              <svg className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
               <span className="text-zinc-400">Time-locked via Lit Protocol</span>
             </div>
             <div className="flex items-center gap-2 text-xs">
-              <svg className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
               <span className="text-zinc-400">Zero server storage</span>
@@ -264,7 +264,7 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
     };
 
     return (
-      <div className="max-w-lg mx-auto p-6 rounded-2xl bg-zinc-900 border border-zinc-800 animate-fade-in">
+      <div className="card max-w-lg mx-auto p-6 animate-fade-in">
         <h2 className="text-xl font-semibold text-zinc-100 mb-6 text-center">
           Creating Vault
         </h2>
@@ -277,22 +277,22 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
                 key={progressStep.id}
                 className={`flex items-center gap-3 p-3 rounded-lg transition-all ${
                   status === 'active' 
-                    ? 'bg-violet-500/10 border border-violet-500/30' 
+                    ? 'bg-zinc-800/80 border border-zinc-700/50' 
                     : status === 'done'
-                    ? 'bg-zinc-800/50'
+                    ? 'bg-zinc-800/30'
                     : 'opacity-40'
                 }`}
               >
                 {/* Status icon */}
                 <div className="flex-shrink-0">
                   {status === 'done' ? (
-                    <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                      <svg className="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="w-5 h-5 rounded-full bg-zinc-700 flex items-center justify-center">
+                      <svg className="w-3 h-3 text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                       </svg>
                     </div>
                   ) : status === 'active' ? (
-                    <div className="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
                   ) : (
                     <div className="w-5 h-5 rounded-full border border-zinc-600" />
                   )}
@@ -308,7 +308,7 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
                   </p>
                   {progressStep.endpoint && (
                     <p className={`text-xs ${
-                      status === 'active' ? 'text-violet-400' : 'text-zinc-600'
+                      status === 'active' ? 'text-zinc-400' : 'text-zinc-600'
                     }`}>
                       → {progressStep.endpoint}
                     </p>
@@ -328,7 +328,7 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
 
   // Input form
   return (
-    <div className="max-w-lg mx-auto p-6 rounded-2xl bg-zinc-900 border border-zinc-800">
+    <div className="card max-w-lg mx-auto p-6">
       <h2 className="text-xl font-semibold text-zinc-100 mb-6">
         Lock Your Secret
       </h2>
@@ -345,12 +345,7 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
             onChange={(e) => setVaultName(e.target.value)}
             placeholder="e.g., Birthday message for Mom"
             maxLength={100}
-            className="
-              w-full px-4 py-3 rounded-lg
-              bg-zinc-800 border border-zinc-700
-              text-zinc-100 placeholder-zinc-500
-              focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent
-            "
+            className="input"
           />
         </div>
 
@@ -364,13 +359,7 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
             onChange={(e) => setSecretText(e.target.value)}
             placeholder="Enter your secret..."
             rows={4}
-            className={`
-              w-full px-4 py-3 rounded-lg resize-none
-              bg-zinc-800 border
-              text-zinc-100 placeholder-zinc-500
-              focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent
-              ${tooLarge ? 'border-red-500' : 'border-zinc-700'}
-            `}
+            className={`input resize-none ${tooLarge ? 'border-red-500' : ''}`}
           />
           {hasContent && (
             <p className={`mt-1.5 text-xs ${tooLarge ? 'text-red-400' : 'text-zinc-500'}`}>
@@ -392,7 +381,7 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
             type="checkbox"
             checked={destroyAfterRead}
             onChange={(e) => setDestroyAfterRead(e.target.checked)}
-            className="w-4 h-4 rounded border-zinc-600 bg-zinc-800 text-violet-600 focus:ring-violet-500 focus:ring-offset-0"
+            className="w-4 h-4 rounded border-zinc-600 bg-[#1a1a1c] text-zinc-100 focus:ring-1 focus:ring-zinc-500 focus:ring-offset-0"
           />
           <div>
             <span className="text-sm text-zinc-300">Destroy after reading</span>
@@ -407,12 +396,7 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
         <button
           onClick={handleCreate}
           disabled={!canCreate || tooLarge}
-          className="
-            w-full py-3 rounded-lg font-medium
-            bg-violet-600 text-white
-            hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed
-            transition-colors
-          "
+          className="btn-primary w-full"
         >
           Lock Secret
         </button>

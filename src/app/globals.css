@@ -1,32 +1,35 @@
 @import "tailwindcss";
 
 :root {
-  --background: #09090b;
+  --background-top: #0f0f11;
+  --background-bottom: #09090b;
   --foreground: #fafafa;
+  --card-surface: #111113;
+  --input-surface: #1a1a1c;
+  --border-subtle: rgba(39, 39, 42, 0.5);
 }
 
 @theme inline {
-  --color-background: var(--background);
+  --color-background: var(--background-bottom);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
-  background: var(--background);
+  background: linear-gradient(to bottom, var(--background-top), var(--background-bottom));
+  min-height: 100vh;
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
-/* Subtle grid background */
+/* Subtle noise texture for anti-banding */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
-  background-image: 
-    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
-  background-size: 64px 64px;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.02;
   pointer-events: none;
   z-index: -1;
 }
@@ -99,4 +102,75 @@ body::before {
 
 .animate-pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* ============================================
+   Design System - Vercel/Linear Style
+   ============================================ */
+
+/* Cards */
+.card {
+  @apply bg-[#111113] border border-zinc-800/50 shadow-lg shadow-black/20 rounded-xl;
+}
+
+.card-inner {
+  @apply bg-[#1a1a1c] border border-zinc-800/50 rounded-lg;
+}
+
+/* Buttons */
+.btn-primary {
+  @apply py-3 rounded-lg font-medium transition-colors bg-white text-zinc-900 hover:bg-zinc-200 disabled:bg-zinc-700 disabled:text-zinc-500 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply py-3 rounded-lg font-medium transition-colors bg-[#1a1a1c] border border-zinc-700/50 text-zinc-300 hover:bg-zinc-800;
+}
+
+.btn-ghost {
+  @apply py-2 text-sm text-zinc-400 hover:text-zinc-200 transition-colors;
+}
+
+/* Inputs */
+.input {
+  @apply w-full px-4 py-3 rounded-lg bg-[#1a1a1c] border border-zinc-700/50 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 focus:border-zinc-600 transition-colors;
+}
+
+/* Icon containers */
+.icon-container {
+  @apply rounded-full bg-zinc-800/80 border border-zinc-700/50 flex items-center justify-center;
+}
+
+.icon-container-sm {
+  @apply rounded-full bg-zinc-800/80 border border-zinc-700/50 flex items-center justify-center w-10 h-10;
+}
+
+.icon-container-md {
+  @apply rounded-full bg-zinc-800/80 border border-zinc-700/50 flex items-center justify-center w-12 h-12;
+}
+
+.icon-container-lg {
+  @apply rounded-full bg-zinc-800/80 border border-zinc-700/50 flex items-center justify-center w-16 h-16;
+}
+
+/* Badges / Pills */
+.badge {
+  @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1a1a1c] border border-zinc-800/50 text-zinc-400;
+}
+
+/* Segmented control */
+.segmented-control {
+  @apply inline-flex bg-[#1a1a1c] border border-zinc-800/50 rounded-lg p-1;
+}
+
+.segmented-pill {
+  @apply px-3 py-1.5 rounded-md text-sm font-medium transition-all text-zinc-400 hover:text-zinc-200;
+}
+
+.segmented-pill-active {
+  @apply px-3 py-1.5 rounded-md text-sm font-medium transition-all bg-zinc-700 text-white;
+}
+
+/* Tech badges in footer */
+.tech-badge {
+  @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1a1a1c] border border-zinc-800/50 hover:border-zinc-700/50 transition-all text-xs font-medium text-zinc-400;
 }

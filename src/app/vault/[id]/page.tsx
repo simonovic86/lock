@@ -115,7 +115,7 @@ export default function VaultPage() {
   if (state === 'loading') {
     return (
       <main className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full" />
+        <div className="animate-spin w-8 h-8 border-2 border-zinc-400 border-t-transparent rounded-full" />
       </main>
     );
   }
@@ -124,17 +124,17 @@ export default function VaultPage() {
   if (state === 'not_found') {
     return (
       <main className="min-h-screen flex items-center justify-center px-4">
-        <div className="max-w-lg mx-auto p-6 rounded-2xl bg-zinc-900 border border-zinc-800 text-center">
-          <div className="w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center mx-auto mb-4">
+        <div className="card max-w-lg mx-auto p-6 text-center">
+          <div className="icon-container-lg mx-auto mb-4">
             <svg className="w-8 h-8 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
           <h1 className="text-xl font-semibold text-zinc-100 mb-2">Vault Not Found</h1>
           <p className="text-sm text-zinc-400 mb-6">
             This vault doesn&apos;t exist. Make sure you have the complete shareable link.
           </p>
-          <Link href="/" className="inline-flex px-6 py-3 rounded-lg font-medium bg-violet-600 text-white hover:bg-violet-500 transition-colors">
+          <Link href="/" className="btn-primary inline-flex px-6">
             Create a Vault
           </Link>
         </div>
@@ -154,17 +154,17 @@ export default function VaultPage() {
             Back
           </Link>
         </div>
-        <div className="max-w-lg mx-auto p-6 rounded-2xl bg-zinc-900 border border-zinc-800 text-center">
-          <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        <div className="card max-w-lg mx-auto p-6 text-center">
+          <div className="icon-container-lg mx-auto mb-4">
+            <svg className="w-8 h-8 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
           <h1 className="text-xl font-semibold text-zinc-100 mb-2">Unlock Failed</h1>
-          <p className="text-sm text-red-400 mb-6">{error}</p>
+          <p className="text-sm text-zinc-500 mb-6">{error}</p>
           <button
             onClick={() => setState('ready')}
-            className="px-6 py-3 rounded-lg font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-colors"
+            className="btn-secondary px-6"
           >
             Try Again
           </button>
@@ -185,13 +185,13 @@ export default function VaultPage() {
             Back
           </Link>
         </div>
-        <div className="max-w-lg mx-auto p-6 rounded-2xl bg-zinc-900 border border-zinc-800">
+        <div className="card max-w-lg mx-auto p-6">
           <h2 className="text-xl font-semibold text-zinc-100 mb-2 text-center">
             Time-Locked Vault
           </h2>
           {vault.destroyAfterRead && (
-            <p className="text-xs text-amber-400 text-center mb-2">
-              ⚠ This vault will be destroyed after reading
+            <p className="text-xs text-zinc-400 text-center mb-2">
+              This vault will be destroyed after reading
             </p>
           )}
           <VaultCountdown
@@ -200,7 +200,7 @@ export default function VaultPage() {
           />
           
           {/* No early access notice */}
-          <div className="mt-6 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50">
+          <div className="card-inner mt-6 p-3">
             <p className="text-xs text-zinc-500 text-center">
               No early access. No payment option. No support ticket.
               <br />
@@ -208,7 +208,7 @@ export default function VaultPage() {
             </p>
           </div>
           
-          <div className="mt-4 pt-4 border-t border-zinc-800 flex justify-center">
+          <div className="mt-4 pt-4 border-t border-zinc-800/50 flex justify-center">
             <button
               onClick={() => setShowQR(true)}
               className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
@@ -250,30 +250,30 @@ export default function VaultPage() {
             Back
           </Link>
         </div>
-        <div className="max-w-lg mx-auto p-6 rounded-2xl bg-zinc-900 border border-zinc-800 text-center">
-          <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+        <div className="card max-w-lg mx-auto p-6 text-center">
+          <div className="icon-container-lg mx-auto mb-4">
+            <svg className="w-8 h-8 text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
             </svg>
           </div>
           <h2 className="text-xl font-semibold text-zinc-100 mb-2">Ready to Unlock</h2>
           <p className="text-sm text-zinc-400 mb-6">
             This vault can now be opened. Click below to decrypt.
             {vault.destroyAfterRead && (
-              <span className="block mt-2 text-amber-400">
-                ⚠ This vault will be destroyed after reading
+              <span className="block mt-2 text-zinc-500">
+                This vault will be destroyed after reading
               </span>
             )}
           </p>
           <button
             onClick={handleUnlockClick}
-            className="w-full py-3 rounded-lg font-medium bg-emerald-600 text-white hover:bg-emerald-500 transition-colors animate-pulse-glow"
+            className="btn-primary w-full"
           >
             Unlock Vault
           </button>
           <button
             onClick={() => setShowQR(true)}
-            className="mt-3 w-full py-2 rounded-lg text-sm text-zinc-400 hover:text-zinc-200 transition-colors flex items-center justify-center gap-2"
+            className="btn-ghost w-full mt-3 flex items-center justify-center gap-2"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h2M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
@@ -291,7 +291,7 @@ export default function VaultPage() {
         isOpen={showDestroyConfirm}
         title="Destroy After Reading"
         message="This vault will be permanently destroyed after you view its contents. This action cannot be undone. Are you sure you want to continue?"
-        confirmText="Yes, Unlock & Destroy"
+        confirmText="Unlock & Destroy"
         cancelText="Cancel"
         variant="warning"
         onConfirm={() => {
@@ -308,8 +308,8 @@ export default function VaultPage() {
   if (state === 'unlocking') {
     return (
       <main className="min-h-screen py-12 px-4">
-        <div className="max-w-lg mx-auto p-6 rounded-2xl bg-zinc-900 border border-zinc-800 text-center">
-          <div className="animate-spin w-12 h-12 border-3 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4" />
+        <div className="card max-w-lg mx-auto p-6 text-center">
+          <div className="animate-spin w-12 h-12 border-2 border-zinc-400 border-t-transparent rounded-full mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-zinc-100 mb-2">Unlocking Vault</h2>
           <p className="text-sm text-zinc-400">{progress}</p>
         </div>
@@ -323,20 +323,20 @@ export default function VaultPage() {
       <>
       {ToastComponent}
       <main className="min-h-screen py-12 px-4">
-        <div className="max-w-lg mx-auto p-6 rounded-2xl bg-zinc-900 border border-zinc-800">
+        <div className="card max-w-lg mx-auto p-6">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
-              <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
+            <div className="icon-container-sm">
+              <svg className="w-5 h-5 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
               </svg>
             </div>
             <div>
               <h2 className="text-lg font-semibold text-zinc-100">Vault Destroyed</h2>
-              <p className="text-xs text-red-400">This secret cannot be accessed again</p>
+              <p className="text-xs text-zinc-500">This secret cannot be accessed again</p>
             </div>
           </div>
-          <div className="p-4 rounded-lg bg-zinc-800 border border-zinc-700">
+          <div className="card-inner p-4">
             <p className="text-sm text-zinc-300 whitespace-pre-wrap break-words">{decryptedSecret}</p>
           </div>
           <button
@@ -344,7 +344,7 @@ export default function VaultPage() {
               navigator.clipboard.writeText(decryptedSecret || '');
               showToast('Secret copied!');
             }}
-            className="w-full mt-6 py-3 rounded-lg font-medium bg-violet-600 text-white hover:bg-violet-500 transition-colors"
+            className="btn-primary w-full mt-6"
           >
             Copy Secret
           </button>
@@ -353,7 +353,7 @@ export default function VaultPage() {
           </p>
           <Link 
             href="/" 
-            className="block mt-4 py-3 rounded-lg font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-colors text-center"
+            className="btn-secondary block mt-4 text-center"
           >
             Create New Vault
           </Link>
@@ -376,11 +376,11 @@ export default function VaultPage() {
           Back
         </Link>
       </div>
-      <div className="max-w-lg mx-auto p-6 rounded-2xl bg-zinc-900 border border-zinc-800">
+      <div className="card max-w-lg mx-auto p-6">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
-            <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          <div className="icon-container-sm">
+            <svg className="w-5 h-5 text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 13l4 4L19 7" />
             </svg>
           </div>
           <div>
@@ -388,7 +388,7 @@ export default function VaultPage() {
             <p className="text-xs text-zinc-500">Decrypted successfully</p>
           </div>
         </div>
-        <div className="p-4 rounded-lg bg-zinc-800 border border-zinc-700">
+        <div className="card-inner p-4">
           <p className="text-sm text-zinc-300 whitespace-pre-wrap break-words">{decryptedSecret}</p>
         </div>
         <div className="mt-6 flex gap-3">
@@ -397,11 +397,11 @@ export default function VaultPage() {
               navigator.clipboard.writeText(decryptedSecret || '');
               showToast('Secret copied!');
             }}
-            className="flex-1 py-3 rounded-lg font-medium bg-violet-600 text-white hover:bg-violet-500 transition-colors"
+            className="btn-primary flex-1"
           >
             Copy Secret
           </button>
-          <Link href="/" className="flex-1 py-3 rounded-lg font-medium bg-zinc-800 text-zinc-300 hover:bg-zinc-700 transition-colors text-center">
+          <Link href="/" className="btn-secondary flex-1 text-center">
             Create Vault
           </Link>
         </div>
@@ -409,33 +409,17 @@ export default function VaultPage() {
       
       {/* Technology badges */}
       <div className="max-w-lg mx-auto mt-8 flex flex-wrap justify-center gap-2">
-        {/* Lit Protocol */}
         <a
           href="https://litprotocol.com"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20 hover:border-violet-500/40 transition-all"
+          className="tech-badge"
         >
-          <svg className="w-3.5 h-3.5 text-violet-400" viewBox="0 0 24 24" fill="currentColor">
+          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          <span className="text-xs font-medium bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
-            Lit Protocol
-          </span>
+          Lit Protocol
         </a>
-        
-        {/* AES-256 */}
-        <span
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-500/10 to-green-500/10 border border-emerald-500/20"
-        >
-          <svg className="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-          </svg>
-          <span className="text-xs font-medium bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">
-            AES-256
-          </span>
-        </span>
       </div>
     </main>
     </>
