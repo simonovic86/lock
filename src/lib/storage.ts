@@ -17,12 +17,12 @@ export interface VaultRef {
   destroyAfterRead?: boolean; // If true, vault is deleted after first unlock
 }
 
-// Threshold for inline storage (no IPFS upload)
-// Keep small to avoid URL length issues
-export const INLINE_DATA_THRESHOLD = 8 * 1024; // 8KB
+// Threshold for inline storage (data stored directly in URL)
+// 32KB works in all modern browsers and covers 99% of text use cases
+export const INLINE_DATA_THRESHOLD = 32 * 1024; // 32KB
 
-// Maximum vault size for IPFS uploads (prevents storage abuse)
-export const MAX_VAULT_SIZE = 1 * 1024 * 1024; // 1MB
+// Maximum vault size (must fit in URL)
+export const MAX_VAULT_SIZE = 32 * 1024; // 32KB
 
 const VAULT_PREFIX = 'vault:';
 

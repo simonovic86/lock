@@ -1,15 +1,14 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { TimeSelector } from './TimeSelector';
 import { useToast } from './Toast';
 import { QRCodeModal } from './QRCode';
-import { Turnstile } from './Turnstile';
 import { generateKey, exportKey, encrypt } from '@/lib/crypto';
 import { initLit, encryptKeyWithTimelock } from '@/lib/lit';
-import { uploadToIPFS, shouldUseInlineStorage, toBase64 } from '@/lib/ipfs';
-import { saveVaultRef, VaultRef, INLINE_DATA_THRESHOLD } from '@/lib/storage';
+import { toBase64 } from '@/lib/ipfs';
+import { saveVaultRef, VaultRef, MAX_VAULT_SIZE } from '@/lib/storage';
 import { getShareableUrl } from '@/lib/share';
 import { getFriendlyError } from '@/lib/errors';
 
@@ -27,10 +26,9 @@ type ProgressStep = {
 };
 
 const PROGRESS_STEPS: Omit<ProgressStep, 'status'>[] = [
-  { id: 'captcha', label: 'Verifying human', endpoint: 'cloudflare.com' },
   { id: 'encrypt', label: 'Encrypting in your browser', endpoint: 'local' },
   { id: 'lit', label: 'Connecting to Lit Protocol', endpoint: 'litprotocol.com' },
-  { id: 'ipfs', label: 'Storing encrypted data', endpoint: 'URL or IPFS' },
+  { id: 'store', label: 'Preparing shareable link', endpoint: 'local' },
   { id: 'timelock', label: 'Applying time-lock', endpoint: 'litprotocol.com' },
   { id: 'save', label: 'Saving locally', endpoint: 'local' },
 ];
@@ -44,31 +42,23 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
   const [currentProgressStep, setCurrentProgressStep] = useState<string>('');
   const [createdVault, setCreatedVault] = useState<VaultRef | null>(null);
   const [showQR, setShowQR] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [destroyAfterRead, setDestroyAfterRead] = useState(false);
   const { showToast, ToastComponent } = useToast();
 
   const hasContent = secretText.trim();
-  const hasCaptcha = !!captchaToken;
-  const canCreate = hasContent && unlockTime && hasCaptcha;
+  const canCreate = hasContent && unlockTime;
 
-  // Estimate storage mode (encrypted data is ~1.5x larger due to IV + base64)
+  // Estimate encrypted size (encrypted data is ~1.5x larger due to IV + base64)
   const estimatedSize = new TextEncoder().encode(secretText).length * 1.5;
-  const willUseIPFS = estimatedSize > INLINE_DATA_THRESHOLD;
-  // Server handles Pinata uploads now - always show IPFS option
-  // Rate limiting and size caps are enforced server-side
-  const hasPinataKey = true;
-
-  const handleCaptchaVerify = useCallback((token: string) => {
-    setCaptchaToken(token);
-  }, []);
-
-  const handleCaptchaExpire = useCallback(() => {
-    setCaptchaToken(null);
-  }, []);
+  const tooLarge = estimatedSize > MAX_VAULT_SIZE;
 
   const handleCreate = async () => {
     if (!canCreate || !unlockTime) return;
+
+    if (tooLarge) {
+      setError(`Secret is too large. Maximum size is ${Math.floor(MAX_VAULT_SIZE / 1024)}KB.`);
+      return;
+    }
 
     setError(null);
     setStep('creating');
@@ -77,19 +67,6 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
     const minDelay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     try {
-      // Verify CAPTCHA server-side
-      setCurrentProgressStep('captcha');
-      const captchaResponse = await fetch('/api/verify-captcha', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: captchaToken }),
-      });
-      
-      if (!captchaResponse.ok) {
-        throw new Error('CAPTCHA verification failed. Please try again.');
-      }
-      await minDelay(400);
-
       // Encrypt the secret locally
       setCurrentProgressStep('encrypt');
       const [symmetricKey] = await Promise.all([
@@ -103,25 +80,10 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
       setCurrentProgressStep('lit');
       await Promise.all([initLit(), minDelay(600)]);
 
-      // Decide storage method: inline (URL) vs IPFS
-      const useInline = shouldUseInlineStorage(encryptedData);
-      let cid = '';
-      let inlineData: string | undefined;
-
-      if (useInline) {
-        // Store encrypted data directly in URL (no IPFS needed)
-        setCurrentProgressStep('ipfs'); // Still show step for consistency
-        inlineData = toBase64(encryptedData);
-        await minDelay(400); // Quick since no network call
-      } else {
-        // Upload to IPFS for larger vaults (requires captcha token)
-        setCurrentProgressStep('ipfs');
-        const [uploadedCid] = await Promise.all([
-          uploadToIPFS(encryptedData, captchaToken),
-          minDelay(600),
-        ]);
-        cid = uploadedCid;
-      }
+      // Store encrypted data in URL (inline storage)
+      setCurrentProgressStep('store');
+      const inlineData = toBase64(encryptedData);
+      await minDelay(400);
 
       // Store key in Lit with time condition
       setCurrentProgressStep('timelock');
@@ -134,7 +96,7 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
       // Create vault reference
       const vault: VaultRef = {
         id: uuidv4(),
-        cid,
+        cid: '', // No IPFS - all inline
         unlockTime: unlockTimeMs,
         litEncryptedKey: encryptedKey,
         litKeyHash: encryptedKeyHash,
@@ -168,7 +130,6 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
     setCurrentProgressStep('');
     setError(null);
     setShowQR(false);
-    setCaptchaToken(null);
     setDestroyAfterRead(false);
   };
 
@@ -266,21 +227,7 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
               <svg className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              {createdVault.inlineData ? (
-                <span className="text-zinc-400">Stored in shareable link (no external service)</span>
-              ) : (
-                <>
-                  <span className="text-zinc-400">Stored on IPFS</span>
-                  <a
-                    href={`https://explore.ipld.io/#/explore/${createdVault.cid}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-violet-400 hover:text-violet-300 underline"
-                  >
-                    verify →
-                  </a>
-                </>
-              )}
+              <span className="text-zinc-400">Stored in shareable link (no external service)</span>
             </div>
             <div className="flex items-center gap-2 text-xs">
               <svg className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -415,21 +362,18 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
             onChange={(e) => setSecretText(e.target.value)}
             placeholder="Enter your secret..."
             rows={4}
-            className="
+            className={`
               w-full px-4 py-3 rounded-lg resize-none
-              bg-zinc-800 border border-zinc-700
+              bg-zinc-800 border
               text-zinc-100 placeholder-zinc-500
               focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent
-            "
+              ${tooLarge ? 'border-red-500' : 'border-zinc-700'}
+            `}
           />
           {hasContent && (
-            <p className="mt-1.5 text-xs text-zinc-500">
-              {willUseIPFS ? (
-                hasPinataKey ? (
-                  'Will be stored on IPFS'
-                ) : (
-                  <span className="text-amber-500">Large content requires Pinata API key</span>
-                )
+            <p className={`mt-1.5 text-xs ${tooLarge ? 'text-red-400' : 'text-zinc-500'}`}>
+              {tooLarge ? (
+                `Too large! Maximum ${Math.floor(MAX_VAULT_SIZE / 1024)}KB (currently ~${Math.floor(estimatedSize / 1024)}KB)`
               ) : (
                 'Will be stored in shareable link'
               )}
@@ -454,26 +398,13 @@ export function CreateVaultForm({ onVaultCreated }: CreateVaultFormProps) {
           </div>
         </label>
 
-        {/* CAPTCHA */}
-        <div className="pt-2">
-          <Turnstile
-            onVerify={handleCaptchaVerify}
-            onExpire={handleCaptchaExpire}
-          />
-          {hasCaptcha && (
-            <p className="text-xs text-emerald-500 text-center mt-2">
-              ✓ Verified
-            </p>
-          )}
-        </div>
-
         {/* Error */}
         {error && <p className="text-sm text-red-400">{error}</p>}
 
         {/* Submit */}
         <button
           onClick={handleCreate}
-          disabled={!canCreate}
+          disabled={!canCreate || tooLarge}
           className="
             w-full py-3 rounded-lg font-medium
             bg-violet-600 text-white

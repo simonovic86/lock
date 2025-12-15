@@ -1,21 +1,19 @@
 /**
- * IPFS storage via server-side Pinata upload
+ * IPFS utilities
  * 
- * For small vaults (<8KB), data is stored inline in the URL — no IPFS needed!
- * For larger vaults, we upload via /api/upload which handles:
- * - Server-side Pinata upload (JWT hidden from client)
- * - Rate limiting (5 uploads per IP per hour)
- * - Size validation (max 1MB)
- * - CAPTCHA verification
+ * All vaults now use inline storage (data in URL), so IPFS upload is no longer needed.
+ * fetchFromIPFS is kept for backwards compatibility with old vaults that used IPFS.
  */
 
-import { withRetry } from './retry';
-import { INLINE_DATA_THRESHOLD } from './storage';
-
-const PINATA_GATEWAY = 'https://gateway.pinata.cloud/ipfs';
+const IPFS_GATEWAYS = [
+  'https://w3s.link/ipfs',
+  'https://dweb.link/ipfs',
+  'https://cloudflare-ipfs.com/ipfs',
+  'https://ipfs.io/ipfs',
+];
 
 /**
- * Convert Uint8Array to base64 string (for inline storage)
+ * Convert Uint8Array to URL-safe base64 string (for inline storage)
  */
 export function toBase64(data: Uint8Array): string {
   let binary = '';
@@ -29,7 +27,7 @@ export function toBase64(data: Uint8Array): string {
 }
 
 /**
- * Convert base64 string back to Uint8Array
+ * Convert URL-safe base64 string back to Uint8Array
  */
 export function fromBase64(base64: string): Uint8Array {
   // Restore standard base64
@@ -45,70 +43,16 @@ export function fromBase64(base64: string): Uint8Array {
 }
 
 /**
- * Check if data should be stored inline (in URL) vs IPFS
- */
-export function shouldUseInlineStorage(data: Uint8Array): boolean {
-  return data.byteLength <= INLINE_DATA_THRESHOLD;
-}
-
-/**
- * Upload encrypted data to IPFS via server API
- * 
- * @param data - Encrypted data to upload
- * @param captchaToken - CAPTCHA token for verification
- * @returns IPFS CID
- */
-export async function uploadToIPFS(
-  data: Uint8Array,
-  captchaToken: string,
-): Promise<string> {
-  return withRetry(
-    async () => {
-      const buffer = new ArrayBuffer(data.byteLength);
-      new Uint8Array(buffer).set(data);
-
-      const blob = new Blob([buffer], { type: 'application/octet-stream' });
-      const formData = new FormData();
-      formData.append('file', blob, 'vault.bin');
-      formData.append('captchaToken', captchaToken);
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || `Upload failed (${response.status})`);
-      }
-
-      return result.cid;
-    },
-    {
-      maxAttempts: 3,
-      onRetry: (attempt, error) => {
-        console.warn(`Upload retry ${attempt}:`, error.message);
-      },
-    },
-  );
-}
-
-/**
  * Fetch data from IPFS via public gateways
+ * 
+ * This is kept for backwards compatibility with old vaults that used IPFS storage.
+ * New vaults use inline storage and don't need this.
  */
 export async function fetchFromIPFS(cid: string): Promise<Uint8Array> {
-  const gateways = [
-    `${PINATA_GATEWAY}/${cid}`,
-    `https://w3s.link/ipfs/${cid}`,
-    `https://dweb.link/ipfs/${cid}`,
-    `https://cloudflare-ipfs.com/ipfs/${cid}`,
-    `https://ipfs.io/ipfs/${cid}`,
-  ];
-
   let lastError: Error | null = null;
 
-  for (const url of gateways) {
+  for (const gateway of IPFS_GATEWAYS) {
+    const url = `${gateway}/${cid}`;
     try {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30000);

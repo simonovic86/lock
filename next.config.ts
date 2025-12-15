@@ -1,11 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Remove static export for now - dynamic routes need server
-  // For static deployment, use URL-based vault encoding instead
+  output: 'export',
   images: {
     unoptimized: true,
   },
+  // Trailing slashes help with static hosting on GitHub Pages, etc.
+  trailingSlash: true,
 };
 
 export default nextConfig;

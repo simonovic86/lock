@@ -104,20 +104,7 @@ export default function VaultPage() {
       if (vault.destroyAfterRead) {
         setProgress('Destroying vault...');
         
-        // Unpin from IPFS if stored there
-        if (vault.cid && !vault.inlineData) {
-          try {
-            await fetch('/api/unpin', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ cid: vault.cid }),
-            });
-          } catch (e) {
-            console.warn('Failed to unpin from IPFS:', e);
-          }
-        }
-        
-        // Delete from local storage
+        // Delete from local storage (data in URL becomes inaccessible without the key)
         await deleteVaultRef(vault.id);
         
         setState('destroyed');
