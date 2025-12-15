@@ -432,21 +432,52 @@ export default function VaultPage() {
         )}
       </div>
       
-      {/* Powered by Lit Protocol badge */}
-      <div className="max-w-lg mx-auto mt-8 text-center">
+      {/* Technology badges */}
+      <div className="max-w-lg mx-auto mt-8 flex flex-wrap justify-center gap-2">
+        {/* Lit Protocol */}
         <a
           href="https://litprotocol.com"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20 hover:border-violet-500/40 transition-all group"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20 hover:border-violet-500/40 transition-all"
         >
-          <svg className="w-4 h-4 text-violet-400" viewBox="0 0 24 24" fill="currentColor">
+          <svg className="w-3.5 h-3.5 text-violet-400" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          <span className="text-xs font-medium bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent group-hover:from-violet-300 group-hover:to-fuchsia-300 transition-all">
-            Powered by Lit Protocol
+          <span className="text-xs font-medium bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
+            Lit Protocol
           </span>
         </a>
+        
+        {/* IPFS */}
+        <a
+          href="https://ipfs.tech"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-cyan-500/10 to-teal-500/10 border border-cyan-500/20 hover:border-cyan-500/40 transition-all"
+        >
+          <svg className="w-3.5 h-3.5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+            <polyline points="2 17 12 22 22 17"/>
+            <polyline points="2 12 12 17 22 12"/>
+          </svg>
+          <span className="text-xs font-medium bg-gradient-to-r from-cyan-400 to-teal-400 bg-clip-text text-transparent">
+            IPFS
+          </span>
+        </a>
+        
+        {/* AES-256 */}
+        <span
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-500/10 to-green-500/10 border border-emerald-500/20"
+        >
+          <svg className="w-3.5 h-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <span className="text-xs font-medium bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">
+            AES-256
+          </span>
+        </span>
       </div>
     </main>
     </>
