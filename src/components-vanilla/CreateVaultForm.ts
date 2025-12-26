@@ -374,7 +374,30 @@ export class CreateVaultForm extends Component<CreateVaultFormState> {
   }
 
   protected update(): void {
-    this.renderCurrentStep(this.element);
+    // Only re-render if step changed, otherwise just update button state
+    if (this.state.step !== this.getCurrentStep()) {
+      this.renderCurrentStep(this.element);
+    } else if (this.state.step === 'input') {
+      this.updateInputFormState();
+    }
+  }
+  
+  private getCurrentStep(): Step {
+    return this.state.step;
+  }
+  
+  private updateInputFormState(): void {
+    // Update submit button disabled state without re-rendering entire form
+    const submitBtn = this.element.querySelector('button[type="button"]:last-of-type') as HTMLButtonElement;
+    if (submitBtn) {
+      const hasContent = this.state.secretText.trim();
+      const unlockTime = this.timeSelector?.getValue();
+      const canCreate = hasContent && unlockTime;
+      const estimatedSize = new TextEncoder().encode(this.state.secretText).length * 1.5;
+      const tooLarge = estimatedSize > MAX_VAULT_SIZE;
+      
+      submitBtn.disabled = !canCreate || tooLarge;
+    }
   }
 
   private async handleCreate(): Promise<void> {
