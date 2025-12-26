@@ -123,7 +123,6 @@ export class CreateVaultForm extends Component<CreateVaultFormState> {
 
     secretTextarea.addEventListener('input', (e) => {
       this.state.secretText = (e.target as HTMLTextAreaElement).value;
-      this.updateInputFormState();
     });
 
     secretField.appendChild(secretLabel);
