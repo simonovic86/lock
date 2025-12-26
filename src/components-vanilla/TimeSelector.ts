@@ -3,7 +3,7 @@
  */
 
 import { Component } from '@/lib/component';
-import styles from '../components/TimeSelector.module.css';
+import styles from '../styles/TimeSelector.module.css';
 
 const PRESETS = [
   { label: '1h', hours: 1 },

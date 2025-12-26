@@ -2,13 +2,13 @@
  * Home page - Create vaults and view vault list
  */
 
-import './app/globals.css';
+import './styles/globals.css';
 import { CreateVaultForm } from './components-vanilla/CreateVaultForm';
 import { getAllVaultRefs, VaultRef } from './lib/storage';
 import { isUnlockable } from './lib/lit';
 import { encodeBackupUrl } from './lib/share';
 import { eventBus } from './lib/component';
-import styles from './app/page.module.css';
+import styles from './styles/page.module.css';
 
 class HomePage {
   private vaults: VaultRef[] = [];

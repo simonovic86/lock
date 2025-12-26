@@ -2,11 +2,11 @@
  * Restore page - Restore vaults from backup
  */
 
-import './app/globals.css';
+import './styles/globals.css';
+import './styles/shared.css';
 import { decodeBackupFromHash } from './lib/share';
 import { saveVaultRef, getAllVaultRefs, VaultRef } from './lib/storage';
-import styles from './app/restore/page.module.css';
-import '@/styles/shared.css';
+import styles from './styles/restore-page.module.css';
 
 type State = 'loading' | 'preview' | 'restoring' | 'done' | 'error';
 

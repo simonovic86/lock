@@ -3,7 +3,7 @@
  */
 
 import { Component, eventBus } from '@/lib/component';
-import styles from './Toast.module.css';
+import styles from '../styles/Toast.module.css';
 
 interface ToastState {
   message: string;

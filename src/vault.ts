@@ -2,7 +2,8 @@
  * Vault detail page - View and unlock vaults
  */
 
-import './app/globals.css';
+import './styles/globals.css';
+import './styles/shared.css';
 import { VaultCountdown } from './components-vanilla/VaultCountdown';
 import { confirm } from './components-vanilla/ConfirmModal';
 import { getVaultRef, deleteVaultRef, VaultRef } from './lib/storage';
@@ -12,8 +13,7 @@ import { importKey, decryptToString } from './lib/crypto';
 import { decodeVaultFromHash, getShareableUrl } from './lib/share';
 import { getFriendlyError } from './lib/errors';
 import { eventBus } from './lib/component';
-import styles from './app/vault/[id]/page.module.css';
-import '@/styles/shared.css';
+import styles from './styles/vault-page.module.css';
 
 type State =
   | 'loading'

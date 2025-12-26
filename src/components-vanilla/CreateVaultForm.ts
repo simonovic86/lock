@@ -10,8 +10,8 @@ import { toBase64 } from '@/lib/encoding';
 import { saveVaultRef, VaultRef } from '@/lib/storage';
 import { getShareableUrl } from '@/lib/share';
 import { getFriendlyError } from '@/lib/errors';
-import styles from '../components/CreateVaultForm.module.css';
-import '@/styles/shared.css';
+import styles from '../styles/CreateVaultForm.module.css';
+import '../styles/shared.css';
 
 const MAX_VAULT_SIZE = 32 * 1024; // 32KB
 
