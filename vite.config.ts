@@ -1,9 +1,10 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
-import { nodePolyfills } from 'vite-plugin-node-polyfills';
+import { NodeGlobalsPolyfillPlugin } from '@esbuild-plugins/node-globals-polyfill';
+import { NodeModulesPolyfillPlugin } from '@esbuild-plugins/node-modules-polyfill';
+import nodePolyfills from 'rollup-plugin-polyfill-node';
 
 export default defineConfig({
-  plugins: [nodePolyfills()],
   build: {
     target: 'es2020',
     outDir: 'dist',
@@ -13,6 +14,7 @@ export default defineConfig({
         vault: resolve(__dirname, 'vault.html'),
         restore: resolve(__dirname, 'restore.html'),
       },
+      plugins: [nodePolyfills()],
     },
     minify: 'terser',
     sourcemap: true,
@@ -20,6 +22,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, './src'),
+      buffer: 'buffer',
+      process: 'process/browser',
     },
   },
   define: {
@@ -32,8 +36,14 @@ export default defineConfig({
       define: {
         global: 'globalThis',
       },
+      plugins: [
+        NodeGlobalsPolyfillPlugin({
+          process: true,
+          buffer: true,
+        }),
+        NodeModulesPolyfillPlugin(),
+      ],
     },
-    include: ['buffer'],
   },
   server: {
     port: 3000,
