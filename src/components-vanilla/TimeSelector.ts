@@ -130,14 +130,20 @@ export class TimeSelector extends Component<TimeSelectorState> {
   }
 
   private handlePreset(hours: PresetHours): void {
-    this.setState({ selection: hours });
     const date = new Date(Date.now() + hours * 60 * 60 * 1000);
-    this.setState({ value: date });
+    this.setState({ selection: hours, value: date });
     this.onChange(date);
   }
 
   private handleCustomClick(): void {
     this.setState({ selection: 'custom' });
+    // Focus the input after it becomes visible
+    setTimeout(() => {
+      const input = this.element.querySelector('input[type="datetime-local"]') as HTMLInputElement;
+      if (input) {
+        input.focus();
+      }
+    }, 0);
   }
 
   private handleCustomChange(e: Event): void {
