@@ -25,6 +25,15 @@ const PROGRESS_STEPS = [
   { id: 'save', label: 'Saving locally', endpoint: 'local' },
 ];
 
+interface VaultDraft {
+  name?: string;
+  unlockTime: number;
+  ciphertext: Uint8Array;
+  iv: Uint8Array;
+  rawKey: Uint8Array;
+  destroyAfterRead: boolean;
+}
+
 interface CreateVaultFormState {
   step: Step;
   vaultName: string;
@@ -38,6 +47,7 @@ interface CreateVaultFormState {
 export class CreateVaultForm extends Component<CreateVaultFormState> {
   private timeSelector: TimeSelector | null = null;
   private onVaultCreated?: (vault: VaultRef) => void;
+  private draft: VaultDraft | null = null;
 
   constructor(onVaultCreated?: (vault: VaultRef) => void) {
     super({
@@ -424,57 +434,103 @@ export class CreateVaultForm extends Component<CreateVaultFormState> {
       new Promise((resolve) => setTimeout(resolve, ms));
 
     try {
-      // Encrypt the secret locally
-      this.setState({ currentProgressStep: 'encrypt' });
-      const [symmetricKey] = await Promise.all([generateKey(), minDelay(600)]);
-      const encryptedData = await encrypt(secretText, symmetricKey);
-      const rawKey = await exportKey(symmetricKey);
-
-      // Initialize Lit Protocol
-      this.setState({ currentProgressStep: 'lit' });
-      await Promise.all([initLit(), minDelay(600)]);
-
-      // Store encrypted data in URL (inline storage)
-      this.setState({ currentProgressStep: 'store' });
-      const inlineData = toBase64(encryptedData);
-      await minDelay(400);
-
-      // Store key in Lit with time condition
-      this.setState({ currentProgressStep: 'timelock' });
-      const unlockTimeMs = unlockTime.getTime();
-      const [{ encryptedKey, encryptedKeyHash }] = await Promise.all([
-        encryptKeyWithTimelock(rawKey, unlockTimeMs),
-        minDelay(600),
-      ]);
-
-      // Create vault reference
-      const vaultId = globalThis.crypto?.randomUUID?.() || 
-        `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-      
-      const vault: VaultRef = {
-        id: vaultId,
-        unlockTime: unlockTimeMs,
-        litEncryptedKey: encryptedKey,
-        litKeyHash: encryptedKeyHash,
-        createdAt: Date.now(),
+      await this.createDraft({
+        plaintext: secretText,
+        unlockTime: unlockTime.getTime(),
         name: vaultName.trim() || undefined,
-        inlineData,
         destroyAfterRead,
-      };
-
-      // Save locally for easy access
-      this.setState({ currentProgressStep: 'save' });
-      await Promise.all([saveVaultRef(vault), minDelay(400)]);
-
-      this.setState({ createdVault: vault, step: 'done' });
-      this.onVaultCreated?.(vault);
+        delay: minDelay,
+      });
+      await this.armDraft(minDelay);
     } catch (err) {
       console.error('Vault creation error:', err);
       const friendlyError = getFriendlyError(
         err instanceof Error ? err : new Error(String(err)),
       );
+      this.draft = null;
       this.setState({ error: friendlyError.message, step: 'input' });
     }
+  }
+
+  private async createDraft({
+    plaintext,
+    unlockTime,
+    name,
+    destroyAfterRead,
+    delay,
+  }: {
+    plaintext: string;
+    unlockTime: number;
+    name?: string;
+    destroyAfterRead: boolean;
+    delay: (ms: number) => Promise<void>;
+  }): Promise<void> {
+    this.setState({ currentProgressStep: 'encrypt' });
+    const [symmetricKey] = await Promise.all([generateKey(), delay(600)]);
+    const encryptedData = await encrypt(plaintext, symmetricKey);
+    const rawKey = await exportKey(symmetricKey);
+    const iv = encryptedData.slice(0, 12);
+    const ciphertext = encryptedData.slice(12);
+
+    this.draft = {
+      name,
+      unlockTime,
+      ciphertext,
+      iv,
+      rawKey,
+      destroyAfterRead,
+    };
+  }
+
+  private async armDraft(delay: (ms: number) => Promise<void>): Promise<void> {
+    if (!this.draft) return;
+
+    // Initialize Lit Protocol
+    this.setState({ currentProgressStep: 'lit' });
+    await Promise.all([initLit(), delay(600)]);
+
+    // Store encrypted data in URL (inline storage)
+    this.setState({ currentProgressStep: 'store' });
+    const inlineData = toBase64(this.combineEncryptedData(this.draft));
+    await delay(400);
+
+    // Store key in Lit with time condition
+    this.setState({ currentProgressStep: 'timelock' });
+    const [{ encryptedKey, encryptedKeyHash }] = await Promise.all([
+      encryptKeyWithTimelock(this.draft.rawKey, this.draft.unlockTime),
+      delay(600),
+    ]);
+
+    // Create vault reference
+    const vaultId =
+      globalThis.crypto?.randomUUID?.() ||
+      `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+
+    const vault: VaultRef = {
+      id: vaultId,
+      unlockTime: this.draft.unlockTime,
+      litEncryptedKey: encryptedKey,
+      litKeyHash: encryptedKeyHash,
+      createdAt: Date.now(),
+      name: this.draft.name,
+      inlineData,
+      destroyAfterRead: this.draft.destroyAfterRead,
+    };
+
+    // Save locally for easy access
+    this.setState({ currentProgressStep: 'save' });
+    await Promise.all([saveVaultRef(vault), delay(400)]);
+
+    this.draft = null;
+    this.setState({ createdVault: vault, step: 'done' });
+    this.onVaultCreated?.(vault);
+  }
+
+  private combineEncryptedData(draft: VaultDraft): Uint8Array {
+    const combined = new Uint8Array(draft.iv.length + draft.ciphertext.length);
+    combined.set(draft.iv, 0);
+    combined.set(draft.ciphertext, draft.iv.length);
+    return combined;
   }
 
   private handleCopy(): void {
@@ -489,6 +545,7 @@ export class CreateVaultForm extends Component<CreateVaultFormState> {
       this.timeSelector.unmount();
     }
     this.timeSelector = null;
+    this.draft = null;
     
     this.setState({
       vaultName: '',
@@ -501,4 +558,3 @@ export class CreateVaultForm extends Component<CreateVaultFormState> {
     });
   }
 }
-
