@@ -1,212 +1,123 @@
 # Time-Locked Vault
 
-A fully decentralized app to lock secrets until a specific time. No accounts, no servers, no trust required.
+A client-side, serverless web app for **delaying access to secrets** using cryptographic time-locks.
 
-## How It Works
+This tool is designed to protect against **impulsive future decisions**, not against a determined attacker with infinite time.
 
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Secret    │────▶│  Encrypted  │────▶│  URL Hash   │
-│  (client)   │     │  AES-256    │     │  (inline)   │
-└─────────────┘     └─────────────┘     └─────────────┘
-                          │
-                          ▼
-                   ┌─────────────┐
-                   │ Lit Protocol│
-                   │ Time-Lock   │
-                   └─────────────┘
-```
+No accounts. No backend. No plaintext ever leaves the browser.
 
-1. **Encrypt** - Your secret is encrypted client-side with AES-256-GCM
-2. **Store** - Encrypted data is embedded directly in the shareable URL
-3. **Time-Lock** - Decryption key locked by Lit Protocol until unlock time
-4. **Decrypt** - After time passes, key is released and secret decrypted locally
+---
 
-**No one can access your secret before the unlock time** - not even us, because:
-- We never see your plaintext secret
-- We never hold your decryption key
-- Time-lock is enforced by Lit Protocol's decentralized network
-- **No server required** - the app is pure static HTML/JS
+## What This Is
 
-## Features
+Time-Locked Vault lets you encrypt a secret in your browser and make it **cryptographically inaccessible** until a chosen time.
 
-- **Text secrets** - Lock any message (up to 32KB)
-- **Vault naming** - Give your vaults memorable names
-- **Time presets** - 1 hour, 24 hours, 7 days, 30 days, or custom
-- **Destroy after read** - Self-destructing vaults that delete after first unlock
-- **Shareable links** - Links work on any device (vault data encoded in URL)
-- **QR codes** - Scan to share vault links
-- **Backup/Restore** - Export all vaults to a single link, restore on any browser
-- **No accounts** - Just create and share
-- **Truly serverless** - Deploy as static files anywhere
+The encrypted secret is embedded directly into a URL.
+The decryption key is held behind a **time-based access condition** enforced by Lit Protocol.
 
-## Tech Stack
+You cannot decrypt the secret early — even if you control the app, the browser, or the storage.
 
-| Component | Technology |
-|-----------|------------|
-| Frontend | Next.js 16 + TypeScript + Tailwind CSS |
-| Encryption | Web Crypto API (AES-256-GCM) |
-| Storage | URL-inline (all data in shareable link) |
-| Time-Lock | Lit Protocol (datil-dev network) |
-| Local Data | IndexedDB (idb-keyval) |
-| Hosting | Any static host (GitHub Pages, Netlify, IPFS) |
+---
 
-## Setup
+## What This Is NOT
 
-### Prerequisites
+This is **not** a data destruction tool.  
+This is **not** a DRM system.  
+This does **not** protect against someone willing to wait until the unlock time.
 
-- Node.js 18+
+Deleting the app, clearing storage, or losing the UI does NOT destroy the secret.
 
-### Installation
+---
 
-```bash
-# Clone the repo
-git clone <repo-url>
-cd lock
+## Threat Model (Explicit)
 
-# Install dependencies
-npm install
+### Protects against
+- Impulsive actions by future-you
+- Panic decisions
+- Regret-driven access attempts
+- Local tampering (storage deletion, reloads, reinstalls)
 
-# Run development server
-npm run dev
-```
+### Does NOT protect against
+- Waiting until the unlock time
+- Copying the encrypted URL and keeping it forever
+- A fully compromised environment
+- Social engineering Lit or breaking cryptography
 
-Open [http://localhost:3000](http://localhost:3000)
+If you need destruction or revocation, this is the wrong tool.
 
-> **No environment variables needed!** The app runs entirely client-side.
+---
 
-## Usage
+## How It Works (Actual Flow)
 
-### Create a Vault
+1. **Client-side encryption**
+    - Your secret is encrypted locally using AES-GCM.
+    - Plaintext never leaves the browser.
 
-1. (Optional) Give your vault a name
-2. Enter your secret message
-3. Select unlock time (or use Custom for specific date/time)
-4. (Optional) Enable "Destroy after reading" for self-destructing vaults
-5. Click "Lock Secret"
-6. Copy the shareable link or scan the QR code
+2. **Key custody via Lit**
+    - The encryption key is wrapped behind a Lit time condition.
+    - Lit will only release the key *after* the specified unlock time.
 
-### Unlock a Vault
+3. **URL-embedded ciphertext**
+    - The encrypted payload is embedded directly into the URL.
+    - This URL is the *only* backup and restore mechanism.
 
-1. Open the vault link
-2. Wait for countdown (if still locked)
-3. Click "Unlock Vault"
-4. View your decrypted secret
+4. **No servers**
+    - No backend
+    - No database
+    - No accounts
+    - No recovery if you lose the URL
 
-> **Note:** If the vault has "Destroy after reading" enabled, you'll see a confirmation warning before unlocking.
+---
 
-### Backup Your Vaults
+## Pages
 
-1. Click "Backup" button on home page
-2. Save the copied link somewhere safe
-3. On a new browser, paste the link to restore all vaults
+- `index.html`
+    - Create vaults
+    - List locally known vault references (UX only)
 
-## Development
+- `vault.html`
+    - Attempt unlock
+    - Decrypt after time condition is met
 
-### Commands
+- `restore.html`
+    - Restore a vault using a backup URL
 
-Using **Make** (recommended):
+---
 
-| Command | Description |
-|---------|-------------|
-| `make dev` | Start development server |
-| `make build` | Build for production (static export) |
-| `make stop` | Stop server on port 3000 |
-| `make restart` | Stop + start dev server |
-| `make status` | Check if server is running |
-| `make lint` | Run ESLint |
-| `make clean` | Remove .next and node_modules |
-| `make help` | Show all commands |
+## Important Properties
 
-Using **npm**:
+### Deletion ≠ Destruction
+Removing a vault from the UI or clearing browser storage does **not** delete the secret.
 
-```bash
-npm run dev       # Start dev server
-npm run build     # Build for production (outputs to /out)
-npm run lint      # Run linter
-```
+If the encrypted URL exists, the vault exists.
 
-### Deploy
+### Restore Is Trivial (By Design)
+Restore is simply:
+> open the URL in any browser
 
-The app has no API routes - all logic runs client-side. Deploy to any Next.js-compatible host:
+There is no identity, ownership, or account recovery layer.
 
-```bash
-npm run build
-# Deploy to Vercel, Netlify, or similar
-```
-
-**Free hosting options:**
-
-| Platform | How to deploy |
-|----------|---------------|
-| **Vercel** | Connect repo (auto-detected, recommended) |
-| **Netlify** | Connect repo, Next.js auto-detected |
-| **Cloudflare Pages** | Connect repo, set framework to Next.js |
-
-> **Note:** Pure static export (`next export`) is not supported due to Lit Protocol SDK bundling requirements. Use a Next.js-compatible host instead.
-
-### Architecture
-
-```
-src/
-├── app/
-│   ├── page.tsx          # Home - create vault + vault list
-│   ├── vault/[id]/       # View/unlock individual vault
-│   └── restore/          # Restore vaults from backup link
-├── components/
-│   ├── CreateVaultForm   # Main form for creating vaults
-│   ├── TimeSelector      # Time picker component
-│   ├── VaultCountdown    # Countdown timer display
-│   ├── ConfirmModal      # Confirmation dialogs
-│   ├── ErrorBoundary     # Global error handling
-│   ├── QRCode            # QR code generator
-│   └── Toast             # Notification component
-└── lib/
-    ├── crypto.ts         # AES-256-GCM encryption
-    ├── ipfs.ts           # IPFS fetch (legacy vaults only)
-    ├── lit.ts            # Lit Protocol time-lock
-    ├── storage.ts        # IndexedDB vault storage
-    ├── share.ts          # URL encoding for sharing
-    ├── retry.ts          # Retry logic for network calls
-    └── errors.ts         # User-friendly error messages
-```
-
-## Security
-
-### What's encrypted?
-- Your secret is encrypted with a random AES-256-GCM key
-- The key is then encrypted by Lit Protocol with time-based access control
-- Decrypted secrets are cleared from memory when you navigate away
-
-### What's stored where?
-
-| Data | Location | Visibility |
-|------|----------|------------|
-| Encrypted secret | URL hash | Anyone with the link |
-| Decryption key | Lit Protocol | Only released after unlock time |
-| Vault metadata | Your browser (IndexedDB) | Only on your device |
-
-### What we DON'T have access to:
-- Your plaintext secret
-- Your decryption key
-- Your vault list (stored locally)
-- **We have no servers** - nothing to access!
-
-### Trust assumptions:
-- **Lit Protocol** - Decentralized network enforces time-lock honestly
-- **Your browser** - Crypto operations are secure
+---
 
 ## Limitations
 
-- **Max secret size** - 32KB (must fit in URL)
-- **Time accuracy** - Depends on blockchain timestamp (±minutes)
-- **Network required** - Need internet to create/unlock (Lit Protocol)
-- **URL length** - Very long URLs may not work in some apps (SMS, etc.)
+- URLs may be long
+- URLs may appear in browser history
+- Anyone with the URL can attempt to unlock *after* the time passes
+- No revocation or early cancellation
+
+These are conscious trade-offs to keep the system trustless and simple.
+
+---
+
+## Who This Is For
+
+- People who want to delay access to secrets
+- Self-control and commitment use cases
+- Developers who want inspectable, minimal security tools
+
+---
 
 ## License
 
 MIT
-
----
-
-**No accounts. No servers. Pure client-side encryption. Time-locked by Lit Protocol. We keep nothing.**
