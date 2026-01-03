@@ -39,7 +39,7 @@ export default defineConfig({
       plugins: [
         NodeGlobalsPolyfillPlugin({
           process: true,
-          buffer: true,
+          buffer: false, // We handle Buffer manually in polyfills.ts
         }),
         NodeModulesPolyfillPlugin(),
       ],

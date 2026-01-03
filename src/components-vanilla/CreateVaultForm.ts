@@ -1,504 +1,278 @@
 /**
- * Create vault form component (Vanilla JS)
+ * Form component for creating time-locked vaults
  */
 
-import { Component, eventBus } from '@/lib/component';
-import { TimeSelector } from './TimeSelector';
-import { generateKey, exportKey, encrypt } from '@/lib/crypto';
-import { initLit, encryptKeyWithTimelock } from '@/lib/lit';
-import { toBase64 } from '@/lib/encoding';
-import { saveVaultRef, VaultRef } from '@/lib/storage';
-import { getShareableUrl } from '@/lib/share';
-import { getFriendlyError } from '@/lib/errors';
+import { Component } from '../lib/component';
+import { generateKey, exportKey, encrypt } from '../lib/crypto';
+import { toBase64 } from '../lib/encoding';
+import { initLit, encryptKeyWithTimelock } from '../lib/lit';
+import { saveVaultRef, VaultRef } from '../lib/storage';
 import styles from '../styles/CreateVaultForm.module.css';
-import '../styles/shared.css';
 
-const MAX_VAULT_SIZE = 32 * 1024; // 32KB
-
-type Step = 'input' | 'creating' | 'done';
-
-const PROGRESS_STEPS = [
-  { id: 'encrypt', label: 'Encrypting in your browser', endpoint: 'local' },
-  { id: 'lit', label: 'Connecting to Lit Protocol', endpoint: 'litprotocol.com' },
-  { id: 'store', label: 'Preparing shareable link', endpoint: 'local' },
-  { id: 'timelock', label: 'Applying time-lock', endpoint: 'litprotocol.com' },
-  { id: 'save', label: 'Saving locally', endpoint: 'local' },
-];
-
-interface CreateVaultFormState {
-  step: Step;
-  vaultName: string;
-  secretText: string;
-  destroyAfterRead: boolean;
+interface State {
+  step: 'form' | 'encrypting' | 'locking' | 'saving';
   error: string | null;
-  currentProgressStep: string;
-  createdVault: VaultRef | null;
+  secret: string;
+  unlockDate: string;
+  unlockTime: string;
+  destroyAfterRead: boolean;
 }
 
-export class CreateVaultForm extends Component<CreateVaultFormState> {
-  private timeSelector: TimeSelector | null = null;
-  private onVaultCreated?: (vault: VaultRef) => void;
+export class CreateVaultForm extends Component<State> {
+  private onCreate: (vault: VaultRef) => void;
 
-  constructor(onVaultCreated?: (vault: VaultRef) => void) {
+  constructor(onCreate: (vault: VaultRef) => void) {
     super({
-      step: 'input',
-      vaultName: '',
-      secretText: '',
-      destroyAfterRead: false,
+      step: 'form',
       error: null,
-      currentProgressStep: '',
-      createdVault: null,
+      secret: '',
+      unlockDate: '',
+      unlockTime: '',
+      destroyAfterRead: false,
     });
-    this.onVaultCreated = onVaultCreated;
+    this.onCreate = onCreate;
   }
 
   protected render(): HTMLElement {
     const container = this.createElement('div', [styles.card]);
-    this.renderCurrentStep(container);
+    this.renderContent(container);
     return container;
   }
 
-  private renderCurrentStep(container: HTMLElement): void {
-    container.innerHTML = '';
-
-    switch (this.state.step) {
-      case 'input':
-        this.renderInputForm(container);
-        break;
-      case 'creating':
-        this.renderCreatingState(container);
-        break;
-      case 'done':
-        this.renderDoneState(container);
-        break;
-    }
+  protected update(): void {
+    this.element.innerHTML = '';
+    this.renderContent(this.element);
   }
 
-  private renderInputForm(container: HTMLElement): void {
-    container.className = styles.card;
+  private renderContent(container: HTMLElement): void {
+    if (this.state.step !== 'form') {
+      this.renderProgress(container);
+      return;
+    }
 
-    // Heading
     const heading = this.createElement('h2', [styles.heading]);
-    heading.textContent = 'Lock Your Secret';
+    heading.textContent = 'Create a Vault';
     container.appendChild(heading);
 
-    // Form
-    const form = this.createElement('div', [styles.form]);
+    const form = this.createElement('form', [styles.form]);
+    form.addEventListener('submit', (e) => this.handleSubmit(e));
 
-    // Vault name field
-    const nameField = this.createElement('div', [styles.field]);
-    const nameLabel = this.createElement('label', [styles.fieldLabel]);
-    nameLabel.innerHTML = 'Vault name <span class="' + styles.optionalText + '">(optional)</span>';
-    const nameInput = this.createElement('input', [styles.input]) as HTMLInputElement;
-    nameInput.type = 'text';
-    nameInput.placeholder = 'e.g., Birthday message for Mom';
-    nameInput.maxLength = 100;
-    nameInput.value = this.state.vaultName;
-    nameInput.addEventListener('input', (e) => {
-      this.state.vaultName = (e.target as HTMLInputElement).value;
-    });
-    nameField.appendChild(nameLabel);
-    nameField.appendChild(nameInput);
-    form.appendChild(nameField);
-
-    // Secret message field
+    // Secret textarea
     const secretField = this.createElement('div', [styles.field]);
     const secretLabel = this.createElement('label', [styles.fieldLabel]);
-    secretLabel.textContent = 'Secret message';
-    const secretTextarea = this.createElement('textarea', [
-      styles.input,
-      styles.textarea,
-    ]) as HTMLTextAreaElement;
-    secretTextarea.placeholder = 'Enter your secret...';
+    secretLabel.textContent = 'Your Secret';
+    const secretTextarea = document.createElement('textarea');
+    secretTextarea.className = `${styles.input} ${styles.textarea}`;
+    secretTextarea.placeholder = 'Enter your secret message...';
+    secretTextarea.required = true;
     secretTextarea.rows = 4;
-    secretTextarea.value = this.state.secretText;
-
-    const estimatedSize =
-      new TextEncoder().encode(this.state.secretText).length * 1.5;
-    const tooLarge = estimatedSize > MAX_VAULT_SIZE;
-
-    if (tooLarge) {
-      secretTextarea.classList.add(styles.inputError);
-    }
-
+    secretTextarea.value = this.state.secret;
     secretTextarea.addEventListener('input', (e) => {
-      this.state.secretText = (e.target as HTMLTextAreaElement).value;
+      this.state.secret = (e.target as HTMLTextAreaElement).value;
     });
-
     secretField.appendChild(secretLabel);
     secretField.appendChild(secretTextarea);
-
-    // Size hint
-    if (this.state.secretText.trim()) {
-      const hint = this.createElement('p', [
-        styles.hint,
-        tooLarge ? styles.hintError : '',
-      ]);
-      hint.textContent = tooLarge
-        ? `Too large! Maximum ${Math.floor(MAX_VAULT_SIZE / 1024)}KB (currently ~${Math.floor(estimatedSize / 1024)}KB)`
-        : 'Will be stored in shareable link';
-      secretField.appendChild(hint);
-    }
-
     form.appendChild(secretField);
 
-    // Time selector
-    if (!this.timeSelector) {
-      this.timeSelector = new TimeSelector(() => this.update());
-    }
-    const timeSelectorContainer = this.createElement('div');
-    this.timeSelector.mount(timeSelectorContainer);
-    form.appendChild(timeSelectorContainer);
+    // Date field
+    const dateField = this.createElement('div', [styles.field]);
+    const dateLabel = this.createElement('label', [styles.fieldLabel]);
+    dateLabel.textContent = 'Unlock Date';
+    const dateInput = document.createElement('input');
+    dateInput.type = 'date';
+    dateInput.className = styles.input;
+    dateInput.required = true;
+    dateInput.value = this.state.unlockDate;
+    dateInput.min = new Date().toISOString().split('T')[0];
+    dateInput.addEventListener('input', (e) => {
+      this.state.unlockDate = (e.target as HTMLInputElement).value;
+    });
+    dateField.appendChild(dateLabel);
+    dateField.appendChild(dateInput);
+    form.appendChild(dateField);
+
+    // Time field
+    const timeField = this.createElement('div', [styles.field]);
+    const timeLabel = this.createElement('label', [styles.fieldLabel]);
+    timeLabel.textContent = 'Unlock Time';
+    const timeInput = document.createElement('input');
+    timeInput.type = 'time';
+    timeInput.className = styles.input;
+    timeInput.required = true;
+    timeInput.value = this.state.unlockTime;
+    timeInput.addEventListener('input', (e) => {
+      this.state.unlockTime = (e.target as HTMLInputElement).value;
+    });
+    timeField.appendChild(timeLabel);
+    timeField.appendChild(timeInput);
+    form.appendChild(timeField);
 
     // Destroy after read checkbox
-    const checkboxLabel = this.createElement('label', [styles.checkboxLabel]);
-    const checkbox = this.createElement('input', [
-      styles.checkbox,
-    ]) as HTMLInputElement;
+    const checkboxWrapper = this.createElement('label', [styles.checkboxLabel]);
+    const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
+    checkbox.className = styles.checkbox;
     checkbox.checked = this.state.destroyAfterRead;
     checkbox.addEventListener('change', (e) => {
       this.state.destroyAfterRead = (e.target as HTMLInputElement).checked;
     });
-
-    const checkboxTextContainer = this.createElement('div');
     const checkboxText = this.createElement('span', [styles.checkboxText]);
     checkboxText.textContent = 'Destroy after reading';
-    const checkboxHint = this.createElement('p', [styles.checkboxHint]);
-    checkboxHint.textContent = 'Vault will be deleted after first unlock';
+    checkboxWrapper.appendChild(checkbox);
+    checkboxWrapper.appendChild(checkboxText);
+    form.appendChild(checkboxWrapper);
 
-    checkboxTextContainer.appendChild(checkboxText);
-    checkboxTextContainer.appendChild(checkboxHint);
-    checkboxLabel.appendChild(checkbox);
-    checkboxLabel.appendChild(checkboxTextContainer);
-    form.appendChild(checkboxLabel);
-
-    // Error message
+    // Error display
     if (this.state.error) {
-      const errorEl = this.createElement('p', [styles.error]);
-      errorEl.textContent = this.state.error;
-      form.appendChild(errorEl);
+      const errorDiv = this.createElement('div', [styles.error]);
+      errorDiv.textContent = this.state.error;
+      form.appendChild(errorDiv);
     }
 
     // Submit button
-    const hasContent = this.state.secretText.trim();
-    const unlockTime = this.timeSelector?.getValue();
-    const canCreate = hasContent && unlockTime;
-
-    const submitBtn = this.createElement('button', ['btn-primary']);
-    submitBtn.textContent = 'Lock Secret';
-    submitBtn.style.width = '100%';
-    (submitBtn as HTMLButtonElement).disabled = !canCreate || tooLarge;
-    submitBtn.addEventListener('click', () => this.handleCreate());
+    const submitBtn = document.createElement('button');
+    submitBtn.type = 'submit';
+    submitBtn.className = 'btn-primary';
+    submitBtn.textContent = 'Create Vault';
     form.appendChild(submitBtn);
 
     container.appendChild(form);
   }
 
-  private renderCreatingState(container: HTMLElement): void {
-    container.className = styles.card;
-
+  private renderProgress(container: HTMLElement): void {
     const title = this.createElement('h2', [styles.progressTitle]);
     title.textContent = 'Creating Vault';
     container.appendChild(title);
 
-    const progressSteps = this.createElement('div', [styles.progressSteps]);
+    const steps = this.createElement('div', [styles.progressSteps]);
 
-    PROGRESS_STEPS.forEach((step) => {
-      const status = this.getStepStatus(step.id);
-      const stepClass =
-        status === 'active'
-          ? styles.progressStepActive
-          : status === 'done'
+    const stepConfigs = [
+      { key: 'encrypting', label: 'Encrypting your secret' },
+      { key: 'locking', label: 'Creating time lock' },
+      { key: 'saving', label: 'Saving vault' },
+    ];
+
+    const currentIndex = stepConfigs.findIndex(
+      (s) => s.key === this.state.step,
+    );
+
+    stepConfigs.forEach((stepConfig, index) => {
+      const isDone = index < currentIndex;
+      const isActive = index === currentIndex;
+      const isPending = index > currentIndex;
+
+      const stepDiv = this.createElement('div', [
+        styles.progressStep,
+        isDone
           ? styles.progressStepDone
-          : styles.progressStepPending;
-
-      const stepEl = this.createElement('div', [styles.progressStep, stepClass]);
+          : isActive
+            ? styles.progressStepActive
+            : styles.progressStepPending,
+      ]);
 
       // Icon
-      const iconContainer = this.createElement('div', [styles.progressIcon]);
-      if (status === 'done') {
+      const iconDiv = this.createElement('div', [styles.progressIcon]);
+      if (isDone) {
         const doneIcon = this.createElement('div', [styles.progressIconDone]);
         const checkSvg = this.createSVG('M5 13l4 4L19 7', [
           styles.progressIconDoneCheck,
         ]);
-        checkSvg.setAttribute('stroke-width', '3');
         doneIcon.appendChild(checkSvg);
-        iconContainer.appendChild(doneIcon);
-      } else if (status === 'active') {
+        iconDiv.appendChild(doneIcon);
+      } else if (isActive) {
         const spinner = this.createElement('div', [styles.progressIconActive]);
-        iconContainer.appendChild(spinner);
+        iconDiv.appendChild(spinner);
       } else {
         const pending = this.createElement('div', [styles.progressIconPending]);
-        iconContainer.appendChild(pending);
+        iconDiv.appendChild(pending);
       }
+      stepDiv.appendChild(iconDiv);
 
-      // Content
-      const content = this.createElement('div', [styles.progressContent]);
-      const label = this.createElement('p', [
+      // Label
+      const labelDiv = this.createElement('div', [
         styles.progressLabel,
-        status === 'active'
-          ? styles.progressLabelActive
-          : status === 'done'
+        isDone
           ? styles.progressLabelDone
-          : styles.progressLabelPending,
+          : isActive
+            ? styles.progressLabelActive
+            : styles.progressLabelPending,
       ]);
-      label.textContent = step.label;
-      content.appendChild(label);
+      labelDiv.textContent = stepConfig.label;
+      stepDiv.appendChild(labelDiv);
 
-      if (step.endpoint) {
-        const endpoint = this.createElement('p', [
-          styles.progressEndpoint,
-          status === 'active'
-            ? styles.progressEndpointActive
-            : styles.progressEndpointInactive,
-        ]);
-        endpoint.textContent = `→ ${step.endpoint}`;
-        content.appendChild(endpoint);
-      }
-
-      stepEl.appendChild(iconContainer);
-      stepEl.appendChild(content);
-      progressSteps.appendChild(stepEl);
+      steps.appendChild(stepDiv);
     });
 
-    container.appendChild(progressSteps);
+    container.appendChild(steps);
 
     const footer = this.createElement('p', [styles.progressFooter]);
-    footer.textContent = 'No data is sent to our servers';
+    footer.textContent = 'This may take a moment...';
     container.appendChild(footer);
   }
 
-  private renderDoneState(container: HTMLElement): void {
-    if (!this.state.createdVault) return;
+  private async handleSubmit(e: Event): Promise<void> {
+    e.preventDefault();
 
-    container.className = `${styles.card} ${styles.cardCenter}`;
+    const { secret, unlockDate, unlockTime, destroyAfterRead } = this.state;
 
-    // Icon
-    const iconContainer = this.createElement('div', [styles.iconContainerLg]);
-    const icon = this.createSVG('M5 13l4 4L19 7', [styles.icon]);
-    iconContainer.appendChild(icon);
-    container.appendChild(iconContainer);
+    // Parse unlock time
+    const unlockDateTime = new Date(`${unlockDate}T${unlockTime}`);
+    const unlockTimeMs = unlockDateTime.getTime();
 
-    // Title
-    const title = this.createElement('h2', [styles.successTitle]);
-    title.textContent = this.state.createdVault.name
-      ? `"${this.state.createdVault.name}" Created!`
-      : 'Vault Created!';
-    container.appendChild(title);
-
-    // Message
-    const message = this.createElement('p', [styles.successMessage]);
-    const unlockTime = this.timeSelector?.getValue();
-    message.textContent = `Your secret is locked until ${unlockTime?.toLocaleString()}`;
-    if (this.state.createdVault.destroyAfterRead) {
-      const notice = this.createElement('span', [styles.destroyNotice]);
-      notice.textContent = 'This vault will be destroyed after reading';
-      message.appendChild(notice);
-    }
-    container.appendChild(message);
-
-    // Shareable link
-    const linkContainer = this.createElement('div', [styles.linkContainer]);
-    const linkLabel = this.createElement('p', [styles.linkLabel]);
-    linkLabel.textContent = 'Shareable Link';
-    const linkText = this.createElement('code', [styles.linkText]);
-    linkText.textContent = getShareableUrl(this.state.createdVault);
-    linkContainer.appendChild(linkLabel);
-    linkContainer.appendChild(linkText);
-    container.appendChild(linkContainer);
-
-    // Buttons
-    const buttonRow = this.createElement('div', [styles.buttonRow]);
-    const copyBtn = this.createElement('button', [
-      'btn-primary',
-      styles.buttonFlex,
-    ]);
-    copyBtn.textContent = 'Copy Link';
-    copyBtn.addEventListener('click', () => this.handleCopy());
-    buttonRow.appendChild(copyBtn);
-
-    container.appendChild(buttonRow);
-
-    // Done button
-    const doneBtn = this.createElement('button', ['btn-ghost', styles.doneButton]);
-    doneBtn.textContent = 'Done — Create Another';
-    doneBtn.addEventListener('click', () => this.handleReset());
-    container.appendChild(doneBtn);
-
-    // Verification section
-    this.renderVerificationSection(container);
-  }
-
-  private renderVerificationSection(container: HTMLElement): void {
-    const section = this.createElement('div', [styles.verificationSection]);
-    const list = this.createElement('div', [styles.verificationList]);
-
-    const items = [
-      'Encrypted in your browser',
-      'Stored in shareable link (no external service)',
-      'Time-locked via Lit Protocol',
-      'Zero server storage',
-    ];
-
-    items.forEach((text) => {
-      const item = this.createElement('div', [styles.verificationItem]);
-      const icon = this.createSVG('M5 13l4 4L19 7', [styles.checkIcon]);
-      icon.setAttribute('stroke-width', '2');
-      const span = this.createElement('span', [styles.verificationText]);
-      span.textContent = text;
-      item.appendChild(icon);
-      item.appendChild(span);
-      list.appendChild(item);
-    });
-
-    section.appendChild(list);
-
-    const footer = this.createElement('p', [styles.verificationFooter]);
-    footer.textContent = 'No early access — not for anyone, including us.';
-    section.appendChild(footer);
-
-    container.appendChild(section);
-  }
-
-  private getStepStatus(stepId: string): 'pending' | 'active' | 'done' {
-    const stepIndex = PROGRESS_STEPS.findIndex((s) => s.id === stepId);
-    const currentIndex = PROGRESS_STEPS.findIndex(
-      (s) => s.id === this.state.currentProgressStep,
-    );
-    if (stepIndex < currentIndex) return 'done';
-    if (stepIndex === currentIndex) return 'active';
-    return 'pending';
-  }
-
-  protected update(): void {
-    // Re-render the entire component to reflect state changes
-    this.renderCurrentStep(this.element);
-  }
-
-  private async handleCreate(): Promise<void> {
-    // Read values directly from DOM
-    const nameInput = this.element.querySelector('input[type="text"]') as HTMLInputElement;
-    const secretTextarea = this.element.querySelector('textarea') as HTMLTextAreaElement;
-    const checkbox = this.element.querySelector('input[type="checkbox"]') as HTMLInputElement;
-    
-    const vaultName = nameInput?.value || '';
-    const secretText = secretTextarea?.value || '';
-    const destroyAfterRead = checkbox?.checked || false;
-    const unlockTime = this.timeSelector?.getValue();
-    
-    console.log('handleCreate called:', { 
-      secretText, 
-      unlockTime, 
-      vaultName, 
-      destroyAfterRead,
-      hasTextarea: !!secretTextarea,
-      textareaValue: secretTextarea?.value,
-      timeSelectorExists: !!this.timeSelector
-    });
-    
-    const hasContent = secretText.trim();
-    if (!hasContent || !unlockTime) {
-      console.log('Validation failed:', { hasContent: !!hasContent, unlockTime: !!unlockTime });
+    if (unlockTimeMs <= Date.now()) {
+      this.setState({ error: 'Unlock time must be in the future' });
       return;
     }
-
-    const estimatedSize = new TextEncoder().encode(secretText).length * 1.5;
-    const tooLarge = estimatedSize > MAX_VAULT_SIZE;
-
-    if (tooLarge) {
-      this.setState({
-        error: `Secret is too large. Maximum size is ${Math.floor(MAX_VAULT_SIZE / 1024)}KB.`,
-      });
-      return;
-    }
-
-    // Update state with actual values
-    this.state.vaultName = vaultName;
-    this.state.secretText = secretText;
-    this.state.destroyAfterRead = destroyAfterRead;
-    
-    this.setState({ error: null, step: 'creating' });
-
-    const minDelay = (ms: number) =>
-      new Promise((resolve) => setTimeout(resolve, ms));
 
     try {
-      // Encrypt the secret locally
-      this.setState({ currentProgressStep: 'encrypt' });
-      const [symmetricKey] = await Promise.all([generateKey(), minDelay(600)]);
-      const encryptedData = await encrypt(secretText, symmetricKey);
-      const rawKey = await exportKey(symmetricKey);
+      // Step 1: Encrypt the secret
+      this.setState({ step: 'encrypting', error: null });
 
-      // Initialize Lit Protocol
-      this.setState({ currentProgressStep: 'lit' });
-      await Promise.all([initLit(), minDelay(600)]);
-
-      // Store encrypted data in URL (inline storage)
-      this.setState({ currentProgressStep: 'store' });
+      const key = await generateKey();
+      const rawKey = await exportKey(key);
+      const encryptedData = await encrypt(secret, key);
       const inlineData = toBase64(encryptedData);
-      await minDelay(400);
 
-      // Store key in Lit with time condition
-      this.setState({ currentProgressStep: 'timelock' });
-      const unlockTimeMs = unlockTime.getTime();
-      const [{ encryptedKey, encryptedKeyHash }] = await Promise.all([
-        encryptKeyWithTimelock(rawKey, unlockTimeMs),
-        minDelay(600),
-      ]);
+      // Step 2: Create time lock with Lit Protocol
+      this.setState({ step: 'locking' });
 
-      // Create vault reference
-      const vaultId = globalThis.crypto?.randomUUID?.() || 
-        `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
-      
+      await initLit();
+      const { encryptedKey, encryptedKeyHash } = await encryptKeyWithTimelock(
+        rawKey,
+        unlockTimeMs,
+      );
+
+      // Step 3: Save vault
+      this.setState({ step: 'saving' });
+
       const vault: VaultRef = {
-        id: vaultId,
+        id: crypto.randomUUID(),
         unlockTime: unlockTimeMs,
         litEncryptedKey: encryptedKey,
         litKeyHash: encryptedKeyHash,
         createdAt: Date.now(),
-        name: vaultName.trim() || undefined,
         inlineData,
         destroyAfterRead,
       };
 
-      // Save locally for easy access
-      this.setState({ currentProgressStep: 'save' });
-      await Promise.all([saveVaultRef(vault), minDelay(400)]);
+      await saveVaultRef(vault);
 
-      this.setState({ createdVault: vault, step: 'done' });
-      this.onVaultCreated?.(vault);
+      // Notify parent and reset form
+      this.onCreate(vault);
+      this.setState({
+        step: 'form',
+        secret: '',
+        unlockDate: '',
+        unlockTime: '',
+        destroyAfterRead: false,
+        error: null,
+      });
     } catch (err) {
-      console.error('Vault creation error:', err);
-      const friendlyError = getFriendlyError(
-        err instanceof Error ? err : new Error(String(err)),
-      );
-      this.setState({ error: friendlyError.message, step: 'input' });
+      console.error('Failed to create vault:', err);
+      this.setState({
+        step: 'form',
+        error: err instanceof Error ? err.message : 'Failed to create vault',
+      });
     }
-  }
-
-  private handleCopy(): void {
-    if (this.state.createdVault) {
-      navigator.clipboard.writeText(getShareableUrl(this.state.createdVault));
-      eventBus.emit('toast:show', 'Link copied!');
-    }
-  }
-
-  private handleReset(): void {
-    if (this.timeSelector) {
-      this.timeSelector.unmount();
-    }
-    this.timeSelector = null;
-    
-    this.setState({
-      vaultName: '',
-      secretText: '',
-      step: 'input',
-      createdVault: null,
-      currentProgressStep: '',
-      error: null,
-      destroyAfterRead: false,
-    });
   }
 }
-

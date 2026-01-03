@@ -2,6 +2,7 @@
  * Restore page - Restore vaults from backup
  */
 
+import './polyfills';
 import './styles/globals.css';
 import './styles/shared.css';
 import { decodeBackupFromHash } from './lib/share';

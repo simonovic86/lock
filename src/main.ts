@@ -2,6 +2,7 @@
  * Home page - Create vaults and view vault list
  */
 
+import './polyfills';
 import './styles/globals.css';
 import { CreateVaultForm } from './components-vanilla/CreateVaultForm';
 import { getAllVaultRefs, VaultRef } from './lib/storage';

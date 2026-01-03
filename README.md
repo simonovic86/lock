@@ -1,123 +1,105 @@
-# Time-Locked Vault
+# Lock
 
-A client-side, serverless web app for **delaying access to secrets** using cryptographic time-locks.
+Lock lets you seal something until a specific time — and only then reveal it.
 
-This tool is designed to protect against **impulsive future decisions**, not against a determined attacker with infinite time.
+No accounts.  
+No backend.  
+No recovery.  
 
-No accounts. No backend. No plaintext ever leaves the browser.
-
----
-
-## What This Is
-
-Time-Locked Vault lets you encrypt a secret in your browser and make it **cryptographically inaccessible** until a chosen time.
-
-The encrypted secret is embedded directly into a URL.
-The decryption key is held behind a **time-based access condition** enforced by Lit Protocol.
-
-You cannot decrypt the secret early — even if you control the app, the browser, or the storage.
+Just a link.
 
 ---
 
-## What This Is NOT
+## What it does
 
-This is **not** a data destruction tool.  
-This is **not** a DRM system.  
-This does **not** protect against someone willing to wait until the unlock time.
+- You create a vault.
+- You choose a time.
+- You get a URL.
 
-Deleting the app, clearing storage, or losing the UI does NOT destroy the secret.
+Before the time:  
+→ nothing unlocks.
 
----
+After the time:  
+→ the content is revealed.
 
-## Threat Model (Explicit)
-
-### Protects against
-- Impulsive actions by future-you
-- Panic decisions
-- Regret-driven access attempts
-- Local tampering (storage deletion, reloads, reinstalls)
-
-### Does NOT protect against
-- Waiting until the unlock time
-- Copying the encrypted URL and keeping it forever
-- A fully compromised environment
-- Social engineering Lit or breaking cryptography
-
-If you need destruction or revocation, this is the wrong tool.
+That’s it.
 
 ---
 
-## How It Works (Actual Flow)
+## What you can lock
 
-1. **Client-side encryption**
-    - Your secret is encrypted locally using AES-GCM.
-    - Plaintext never leaves the browser.
+Anything that fits in text.
 
-2. **Key custody via Lit**
-    - The encryption key is wrapped behind a Lit time condition.
-    - Lit will only release the key *after* the specified unlock time.
+- Secrets
+- Instructions
+- URLs
+- Other Lock vaults
+- Any URI (`https://`, `mailto:`, `ipfs://`, etc.)
 
-3. **URL-embedded ciphertext**
-    - The encrypted payload is embedded directly into the URL.
-    - This URL is the *only* backup and restore mechanism.
-
-4. **No servers**
-    - No backend
-    - No database
-    - No accounts
-    - No recovery if you lose the URL
+Lock does not interpret the content.  
+It only unlocks it.
 
 ---
 
-## Pages
+## Why this is interesting
 
-- `index.html`
-    - Create vaults
-    - List locally known vault references (UX only)
+A vault doesn’t have to reveal text.
 
-- `vault.html`
-    - Attempt unlock
-    - Decrypt after time condition is met
+It can reveal **links**.
 
-- `restore.html`
-    - Restore a vault using a backup URL
+And those links can point to:
+- other vaults
+- other times
+- other places
 
----
+Which means you can create:
+- chains
+- branches
+- staged disclosures
 
-## Important Properties
+Without Lock knowing or caring.
 
-### Deletion ≠ Destruction
-Removing a vault from the UI or clearing browser storage does **not** delete the secret.
+There is no graph.
+There is no workflow.
+There is no state.
 
-If the encrypted URL exists, the vault exists.
-
-### Restore Is Trivial (By Design)
-Restore is simply:
-> open the URL in any browser
-
-There is no identity, ownership, or account recovery layer.
+It just unlocks what you sealed.
 
 ---
 
-## Limitations
+## How it works
 
-- URLs may be long
-- URLs may appear in browser history
-- Anyone with the URL can attempt to unlock *after* the time passes
-- No revocation or early cancellation
+- Encryption happens client-side.
+- Time-locking is enforced cryptographically.
+- The URL itself is the capability.
 
-These are conscious trade-offs to keep the system trustless and simple.
-
----
-
-## Who This Is For
-
-- People who want to delay access to secrets
-- Self-control and commitment use cases
-- Developers who want inspectable, minimal security tools
+If you have the link, and the time has passed, it opens.
 
 ---
 
-## License
+## What Lock is not
 
-MIT
+- Not a password manager
+- Not a workflow engine
+- Not a dashboard
+- Not a platform
+
+It’s a primitive.
+
+---
+
+## Status
+
+This is an early project.
+
+The surface area is intentionally small.
+The behavior is intentionally boring.
+
+The interesting part is what people do with it.
+
+---
+
+## Philosophy
+
+> We unlock information.  
+> What you do next is up to you.

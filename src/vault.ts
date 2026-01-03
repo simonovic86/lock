@@ -2,6 +2,7 @@
  * Vault detail page - View and unlock vaults
  */
 
+import './polyfills';
 import './styles/globals.css';
 import './styles/shared.css';
 import { VaultCountdown } from './components-vanilla/VaultCountdown';
@@ -280,7 +281,7 @@ class VaultPage {
     secretContainer.className = styles.secretContainer;
     const secretText = document.createElement('p');
     secretText.className = styles.secretText;
-    secretText.textContent = this.decryptedSecret || '';
+    this.renderSecretContent(secretText, this.decryptedSecret || '');
     secretContainer.appendChild(secretText);
     card.appendChild(secretContainer);
 
@@ -343,6 +344,36 @@ class VaultPage {
     `;
     backContainer.appendChild(backLink);
     main.appendChild(backContainer);
+  }
+
+  /**
+   * Renders secret content with URI detection.
+   * Lines matching URI pattern (scheme://...) are rendered as clickable links.
+   */
+  private renderSecretContent(container: HTMLElement, content: string): void {
+    const lines = content.split('\n');
+    // URI pattern: scheme (letter followed by letters/digits/+/./-)
+    // followed by :// and any non-whitespace
+    const uriPattern = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\/\S+$/;
+
+    lines.forEach((line, index) => {
+      const trimmed = line.trim();
+      if (trimmed && uriPattern.test(trimmed)) {
+        const link = document.createElement('a');
+        link.href = trimmed;
+        link.textContent = trimmed;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        container.appendChild(link);
+      } else {
+        container.appendChild(document.createTextNode(line));
+      }
+
+      // Add line break between lines (not after the last one)
+      if (index < lines.length - 1) {
+        container.appendChild(document.createElement('br'));
+      }
+    });
   }
 
   private async handleUnlockClick(): Promise<void> {
