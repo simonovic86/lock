@@ -1,63 +1,68 @@
 /**
- * Form component for creating time-locked vaults
+ * CreateVaultForm - UI Component
  *
- * COMMITMENT MODEL:
- * Vault creation has two explicit phases with an irreversible boundary:
+ * This component handles the user interface for vault creation.
+ * All domain logic (encryption, time-locking, persistence) is delegated
+ * to the vaultCreation module.
  *
- * 1. DRAFT - Local encryption only, reversible
- *    - Encrypts plaintext with a new key
- *    - Holds encrypted payload + raw key in memory
- *    - No Lit Protocol calls
- *    - No persistence
- *    - Can be discarded
+ * ============================================================================
+ * UI FLOW (linear, no hidden logic)
+ * ============================================================================
  *
- * 2. ARM - Finalization, irreversible
- *    - Single action moves draft → armed
- *    - Calls Lit Protocol to create time-lock
- *    - Persists vault to storage
- *    - Immediately wipes all sensitive draft data
- *    - No undo, no recovery
+ * 1. FORM     → User enters secret + unlock time
+ * 2. ENCRYPT  → createDraft() - local encryption only
+ * 3. DRAFT    → User reviews, can Discard or Arm
+ * 4. ARM      → armDraft() - POINT OF NO RETURN
+ * 5. DONE     → Vault created, draft wiped, form reset
  *
- * The boundary between Draft and Arm is the point of no return.
+ * The UI is intentionally thin. It:
+ * - Collects user input
+ * - Calls domain functions
+ * - Renders the current state
+ *
+ * It does NOT contain business logic about encryption or commitment.
  */
 
 import { Component } from '../lib/component';
-import { generateKey, exportKey, encrypt } from '../lib/crypto';
-import { toBase64 } from '../lib/encoding';
-import { initLit, encryptKeyWithTimelock } from '../lib/lit';
-import { saveVaultRef, VaultRef } from '../lib/storage';
+import {
+  VaultDraft,
+  createDraft,
+  armDraft,
+  wipeDraft,
+} from '../lib/vaultCreation';
+import { VaultRef } from '../lib/storage';
 import styles from '../styles/CreateVaultForm.module.css';
 
-/**
- * Draft object - exists ONLY in memory until armed.
- * Contains sensitive key material that must be wiped after arming.
- */
-interface VaultDraft {
-  unlockTime: number;
-  destroyAfterRead: boolean;
-  // Sensitive: must be zeroed after arm
-  rawKey: Uint8Array;
-  encryptedData: Uint8Array;
-  // Derived from encryptedData
-  inlineData: string;
-}
+// ============================================================================
+// State
+// ============================================================================
+
+type Step = 'form' | 'encrypting' | 'draft' | 'arming';
 
 interface State {
-  step: 'form' | 'encrypting' | 'draft' | 'arming';
+  step: Step;
   error: string | null;
+  // Form fields
   secret: string;
   unlockDate: string;
   unlockTime: string;
   destroyAfterRead: boolean;
 }
 
-export class CreateVaultForm extends Component<State> {
-  private onCreate: (vault: VaultRef) => void;
+// ============================================================================
+// Component
+// ============================================================================
 
-  // Draft lives only in memory - never persisted
+export class CreateVaultForm extends Component<State> {
+  private onVaultCreated: (vault: VaultRef) => void;
+
+  /**
+   * Draft lives ONLY in memory.
+   * Set after createDraft(), cleared after armDraft() or discard.
+   */
   private draft: VaultDraft | null = null;
 
-  constructor(onCreate: (vault: VaultRef) => void) {
+  constructor(onVaultCreated: (vault: VaultRef) => void) {
     super({
       step: 'form',
       error: null,
@@ -66,44 +71,52 @@ export class CreateVaultForm extends Component<State> {
       unlockTime: '',
       destroyAfterRead: false,
     });
-    this.onCreate = onCreate;
+    this.onVaultCreated = onVaultCreated;
   }
+
+  // ==========================================================================
+  // Lifecycle
+  // ==========================================================================
 
   protected render(): HTMLElement {
     const container = this.createElement('div', [styles.card]);
-    this.renderContent(container);
+    this.renderCurrentStep(container);
     return container;
   }
 
   protected update(): void {
     this.element.innerHTML = '';
-    this.renderContent(this.element);
+    this.renderCurrentStep(this.element);
   }
 
-  private renderContent(container: HTMLElement): void {
+  // ==========================================================================
+  // Step Rendering (intentionally dumb - just displays current state)
+  // ==========================================================================
+
+  private renderCurrentStep(container: HTMLElement): void {
     switch (this.state.step) {
       case 'form':
-        this.renderForm(container);
+        this.renderFormStep(container);
         break;
       case 'encrypting':
-        this.renderEncrypting(container);
+        this.renderEncryptingStep(container);
         break;
       case 'draft':
-        this.renderDraft(container);
+        this.renderDraftStep(container);
         break;
       case 'arming':
-        this.renderArming(container);
+        this.renderArmingStep(container);
         break;
     }
   }
 
-  private renderForm(container: HTMLElement): void {
+  private renderFormStep(container: HTMLElement): void {
     const heading = this.createElement('h2', [styles.heading]);
     heading.textContent = 'Create a Vault';
     container.appendChild(heading);
 
     const form = this.createElement('form', [styles.form]);
-    form.addEventListener('submit', (e) => this.handleCreateDraft(e));
+    form.addEventListener('submit', (e) => this.handlePrepareVault(e));
 
     // Secret textarea
     const secretField = this.createElement('div', [styles.field]);
@@ -187,7 +200,7 @@ export class CreateVaultForm extends Component<State> {
     container.appendChild(form);
   }
 
-  private renderEncrypting(container: HTMLElement): void {
+  private renderEncryptingStep(container: HTMLElement): void {
     const title = this.createElement('h2', [styles.progressTitle]);
     title.textContent = 'Encrypting';
     container.appendChild(title);
@@ -201,9 +214,9 @@ export class CreateVaultForm extends Component<State> {
     container.appendChild(text);
   }
 
-  private renderDraft(container: HTMLElement): void {
+  private renderDraftStep(container: HTMLElement): void {
     if (!this.draft) {
-      this.resetToForm();
+      this.resetForm();
       return;
     }
 
@@ -211,7 +224,7 @@ export class CreateVaultForm extends Component<State> {
     heading.textContent = 'Vault Ready';
     container.appendChild(heading);
 
-    // Info card
+    // Info card showing unlock time
     const infoCard = this.createElement('div', [styles.linkContainer]);
 
     const unlockLabel = this.createElement('p', [styles.linkLabel]);
@@ -237,27 +250,27 @@ export class CreateVaultForm extends Component<State> {
       container.appendChild(errorDiv);
     }
 
-    // Button row
+    // Action buttons: Discard or Arm
     const buttonRow = this.createElement('div', [styles.buttonRow]);
 
     const discardBtn = document.createElement('button');
     discardBtn.type = 'button';
     discardBtn.className = `btn-secondary ${styles.buttonFlex}`;
     discardBtn.textContent = 'Discard';
-    discardBtn.addEventListener('click', () => this.discardDraft());
+    discardBtn.addEventListener('click', () => this.handleDiscard());
     buttonRow.appendChild(discardBtn);
 
     const armBtn = document.createElement('button');
     armBtn.type = 'button';
     armBtn.className = `btn-primary ${styles.buttonFlex}`;
     armBtn.textContent = 'Arm Vault';
-    armBtn.addEventListener('click', () => this.armDraft());
+    armBtn.addEventListener('click', () => this.handleArmVault());
     buttonRow.appendChild(armBtn);
 
     container.appendChild(buttonRow);
   }
 
-  private renderArming(container: HTMLElement): void {
+  private renderArmingStep(container: HTMLElement): void {
     const title = this.createElement('h2', [styles.progressTitle]);
     title.textContent = 'Arming Vault';
     container.appendChild(title);
@@ -265,8 +278,8 @@ export class CreateVaultForm extends Component<State> {
     const steps = this.createElement('div', [styles.progressSteps]);
 
     const stepConfigs = [
-      { key: 'locking', label: 'Creating time lock' },
-      { key: 'saving', label: 'Finalizing vault' },
+      { label: 'Creating time lock' },
+      { label: 'Finalizing vault' },
     ];
 
     stepConfigs.forEach((stepConfig) => {
@@ -297,17 +310,21 @@ export class CreateVaultForm extends Component<State> {
     container.appendChild(footer);
   }
 
+  // ==========================================================================
+  // Actions (thin handlers that delegate to domain functions)
+  // ==========================================================================
+
   /**
-   * PHASE 1: Create Draft
-   * - Encrypts plaintext locally
-   * - Stores encrypted data + raw key in memory
-   * - No Lit calls, no persistence
+   * Step 1: Prepare vault (create draft)
+   *
+   * Collect input → Validate → Create draft → Show draft view
    */
-  private async handleCreateDraft(e: Event): Promise<void> {
+  private async handlePrepareVault(e: Event): Promise<void> {
     e.preventDefault();
 
     const { secret, unlockDate, unlockTime, destroyAfterRead } = this.state;
 
+    // Parse and validate unlock time
     const unlockDateTime = new Date(`${unlockDate}T${unlockTime}`);
     const unlockTimeMs = unlockDateTime.getTime();
 
@@ -319,22 +336,14 @@ export class CreateVaultForm extends Component<State> {
     try {
       this.setState({ step: 'encrypting', error: null });
 
-      // Generate key and encrypt locally - no network calls
-      const key = await generateKey();
-      const rawKey = await exportKey(key);
-      const encryptedData = await encrypt(secret, key);
-      const inlineData = toBase64(encryptedData);
-
-      // Store draft in memory only - never persisted
-      this.draft = {
+      // Delegate to domain function - creates draft in memory
+      this.draft = await createDraft({
+        secret,
         unlockTime: unlockTimeMs,
         destroyAfterRead,
-        rawKey,
-        encryptedData,
-        inlineData,
-      };
+      });
 
-      // Clear secret from state immediately
+      // Clear secret from UI state immediately
       this.setState({
         step: 'draft',
         secret: '',
@@ -350,61 +359,48 @@ export class CreateVaultForm extends Component<State> {
   }
 
   /**
-   * Discard draft - wipe sensitive data and return to form
+   * Discard draft and return to form
+   *
+   * Wipe draft → Reset form
    */
-  private discardDraft(): void {
-    this.wipeDraft();
-    this.resetToForm();
+  private handleDiscard(): void {
+    if (this.draft) {
+      wipeDraft(this.draft);
+      this.draft = null;
+    }
+    this.resetForm();
   }
 
   /**
-   * PHASE 2: Arm Draft (IRREVERSIBLE)
-   * - Calls Lit Protocol to create time-lock
-   * - Persists vault to storage
-   * - Wipes all sensitive draft data
-   * - No undo
+   * Step 2: Arm vault (IRREVERSIBLE)
+   *
+   * Arm draft → Wipe draft → Notify parent → Reset form
+   *
+   * After this completes, the vault exists and cannot be undone.
    */
-  private async armDraft(): Promise<void> {
+  private async handleArmVault(): Promise<void> {
     if (!this.draft) {
-      this.resetToForm();
+      this.resetForm();
       return;
     }
 
-    // Capture draft reference - after this point, arming is committed
-    const draft = this.draft;
+    // Hold reference to draft - after arming starts, we're committed
+    const draftToArm = this.draft;
 
     try {
       this.setState({ step: 'arming', error: null });
 
       // === POINT OF NO RETURN ===
+      // armDraft calls Lit Protocol and persists the vault
+      const vault = await armDraft(draftToArm);
 
-      // Create time-lock with Lit Protocol
-      await initLit();
-      const { encryptedKey, encryptedKeyHash } = await encryptKeyWithTimelock(
-        draft.rawKey,
-        draft.unlockTime,
-      );
-
-      // Build vault reference
-      const vault: VaultRef = {
-        id: crypto.randomUUID(),
-        unlockTime: draft.unlockTime,
-        litEncryptedKey: encryptedKey,
-        litKeyHash: encryptedKeyHash,
-        createdAt: Date.now(),
-        inlineData: draft.inlineData,
-        destroyAfterRead: draft.destroyAfterRead,
-      };
-
-      // Persist vault
-      await saveVaultRef(vault);
-
-      // === WIPE ALL SENSITIVE DATA ===
-      this.wipeDraft();
+      // === WIPE SENSITIVE DATA ===
+      wipeDraft(draftToArm);
+      this.draft = null;
 
       // Notify parent and reset
-      this.onCreate(vault);
-      this.resetToForm();
+      this.onVaultCreated(vault);
+      this.resetForm();
     } catch (err) {
       console.error('Failed to arm vault:', err);
       // On error, draft remains - user can retry or discard
@@ -416,28 +412,9 @@ export class CreateVaultForm extends Component<State> {
   }
 
   /**
-   * Securely wipe all draft data.
-   * Zeros out sensitive Uint8Arrays to prevent memory recovery.
-   */
-  private wipeDraft(): void {
-    if (!this.draft) return;
-
-    // Zero out sensitive byte arrays
-    if (this.draft.rawKey) {
-      this.draft.rawKey.fill(0);
-    }
-    if (this.draft.encryptedData) {
-      this.draft.encryptedData.fill(0);
-    }
-
-    // Clear all references
-    this.draft = null;
-  }
-
-  /**
    * Reset to initial form state
    */
-  private resetToForm(): void {
+  private resetForm(): void {
     this.setState({
       step: 'form',
       error: null,
