@@ -75,13 +75,21 @@
   width: 100%;
 }
 
+@media (max-width: 360px) {
+  .actions {
+    flex-direction: column-reverse;
+  }
+}
+
 .cancelButton {
   flex: 1;
-  padding: 0.625rem;
+  padding: 0.75rem;
+  min-height: 2.75rem;
 }
 
 .confirmButton {
   flex: 1;
-  padding: 0.625rem;
+  padding: 0.75rem;
+  min-height: 2.75rem;
 }
 

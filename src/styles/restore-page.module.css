@@ -3,11 +3,18 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: var(--space-4);
 }
 
 .main {
   min-height: 100vh;
   padding: var(--space-12) var(--space-4);
+}
+
+@media (max-width: 480px) {
+  .main {
+    padding: var(--space-6) var(--space-4);
+  }
 }
 
 .spinner {

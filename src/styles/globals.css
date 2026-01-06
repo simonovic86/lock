@@ -116,3 +116,15 @@ body::before {
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
+/* ============================================
+   Mobile Adjustments
+   Minimal changes for usability on small screens
+   ============================================ */
+
+@media (max-width: 480px) {
+  /* Reduce excessive vertical padding on mobile */
+  body {
+    font-size: 16px; /* Prevent iOS zoom on input focus */
+  }
+}
+

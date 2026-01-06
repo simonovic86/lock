@@ -3,11 +3,18 @@
   padding: var(--space-12) var(--space-4);
 }
 
+@media (max-width: 480px) {
+  .main {
+    padding: var(--space-6) var(--space-4);
+  }
+}
+
 .mainCentered {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: var(--space-4);
 }
 
 .backButtonContainer {
@@ -206,6 +213,12 @@
   display: flex;
   gap: var(--space-3);
   margin-top: var(--space-6);
+}
+
+@media (max-width: 360px) {
+  .buttonRow {
+    flex-direction: column;
+  }
 }
 
 .buttonFlex {
