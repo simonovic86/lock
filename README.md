@@ -68,6 +68,22 @@ Functional. The feature set is intentionally minimal.
 
 ---
 
+## Open Design Space
+
+Lock treats payloads as opaque. It does not parse structure, enforce schemas, or interpret meaning. This is intentional.
+
+Because vault content can include URIs — including references to other vaults — composition becomes possible without Lock implementing it:
+
+- A vault could contain a link to another vault (chained disclosure)
+- A vault could contain instructions that reference future vaults (staged reveals)
+- A vault could contain pointers to external systems (delegated workflows)
+
+None of this is a feature of Lock. Lock does not manage graphs, enforce sequencing, or track relationships. Any higher-level structure exists entirely in the payload, defined by whoever creates it.
+
+This design leaves the tool simple and the possibilities open.
+
+---
+
 ## Philosophy
 
 Information sealed until its time. Nothing more.
