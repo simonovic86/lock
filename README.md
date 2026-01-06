@@ -1,12 +1,14 @@
-# Lock
+# Seal
 
 Time-locked encryption for the browser.
+
+> The codebase uses "lock" in filenames and identifiers. The application is called Seal.
 
 ---
 
 ## What it does
 
-Lock creates encrypted vaults that cannot be opened until a specified time.
+Seal creates encrypted vaults that cannot be opened until a specified time.
 
 - You write something.
 - You choose when it unlocks.
@@ -17,11 +19,11 @@ After the unlock time, anyone with the URL can decrypt it.
 
 ---
 
-## What you can lock
+## What you can seal
 
 Plain text.
 
-The content is treated as an opaque string. Lock does not parse, validate, or interpret what you write. If a line looks like a URI, it renders as a clickable link. Otherwise, it renders as text.
+The content is treated as an opaque string. Seal does not parse, validate, or interpret what you write. If a line looks like a URI, it renders as a clickable link. Otherwise, it renders as text.
 
 ---
 
@@ -49,7 +51,7 @@ Vaults exist only as URLs and local references. If you lose the link, the conten
 - Not a messaging platform
 - Not a workflow system
 
-Lock does one thing: seal content until a time, then unseal it.
+Seal does one thing: hold content until a time, then release it.
 
 ---
 
@@ -70,15 +72,15 @@ Functional. The feature set is intentionally minimal.
 
 ## Open Design Space
 
-Lock treats payloads as opaque. It does not parse structure, enforce schemas, or interpret meaning. This is intentional.
+Seal treats payloads as opaque. It does not parse structure, enforce schemas, or interpret meaning. This is intentional.
 
-Because vault content can include URIs — including references to other vaults — composition becomes possible without Lock implementing it:
+Because vault content can include URIs — including references to other vaults — composition becomes possible without Seal implementing it:
 
 - A vault could contain a link to another vault (chained disclosure)
 - A vault could contain instructions that reference future vaults (staged reveals)
 - A vault could contain pointers to external systems (delegated workflows)
 
-None of this is a feature of Lock. Lock does not manage graphs, enforce sequencing, or track relationships. Any higher-level structure exists entirely in the payload, defined by whoever creates it.
+None of this is a feature of Seal. Seal does not manage graphs, enforce sequencing, or track relationships. Any higher-level structure exists entirely in the payload, defined by whoever creates it.
 
 This design leaves the tool simple and the possibilities open.
 
