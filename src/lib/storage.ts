@@ -58,3 +58,19 @@ export async function getAllVaultRefs(): Promise<VaultRef[]> {
 
   return vaults.sort((a, b) => b.createdAt - a.createdAt);
 }
+
+/**
+ * Get all vault IDs as a Set (for fast lookup)
+ */
+export async function getAllVaultIds(): Promise<Set<string>> {
+  const vaults = await getAllVaultRefs();
+  return new Set(vaults.map((v) => v.id));
+}
+
+/**
+ * Check if a vault with given ID exists
+ */
+export async function vaultExists(id: string): Promise<boolean> {
+  const vault = await getVaultRef(id);
+  return vault !== undefined;
+}

@@ -6,10 +6,18 @@ import './polyfills';
 import './styles/globals.css';
 import './styles/shared.css';
 import { CreateVaultForm } from './components-vanilla/CreateVaultForm';
-import { getAllVaultRefs, VaultRef } from './lib/storage';
+import { getAllVaultRefs, getAllVaultIds, saveVaultRef, VaultRef } from './lib/storage';
 import { isUnlockable } from './lib/lit';
 import { encodeBackupUrl } from './lib/share';
 import { eventBus } from './lib/component';
+import {
+  downloadVaultExport,
+  parseVEFFromFile,
+  createRestorePreview,
+  restoreVaultFromVEF,
+  VEFRestorePreview,
+  VaultExportFile,
+} from './lib/vef';
 import styles from './styles/page.module.css';
 
 class HomePage {
@@ -157,6 +165,19 @@ class HomePage {
     title.className = styles.vaultsTitle;
     title.textContent = 'Your Vaults';
 
+    const buttonGroup = document.createElement('div');
+    buttonGroup.className = styles.buttonGroup;
+
+    const importBtn = document.createElement('button');
+    importBtn.className = styles.importButton;
+    importBtn.innerHTML = `
+      <svg class="${styles.backupIcon}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+      </svg>
+      Import
+    `;
+    importBtn.addEventListener('click', () => this.handleImportVault());
+
     const backupBtn = document.createElement('button');
     backupBtn.className = styles.backupButton;
     backupBtn.innerHTML = `
@@ -167,8 +188,10 @@ class HomePage {
     `;
     backupBtn.addEventListener('click', () => this.handleBackup());
 
+    buttonGroup.appendChild(importBtn);
+    buttonGroup.appendChild(backupBtn);
     header.appendChild(title);
-    header.appendChild(backupBtn);
+    header.appendChild(buttonGroup);
     section.appendChild(header);
 
     // Vault list
@@ -177,6 +200,10 @@ class HomePage {
 
     this.vaults.forEach((vault) => {
       const unlockable = isUnlockable(vault.unlockTime);
+
+      const item = document.createElement('div');
+      item.className = styles.vaultItem;
+
       const link = document.createElement('a');
       const hashData = window.location.hash.slice(1) || '';
       link.href = `./vault.html?id=${vault.id}${hashData ? '#' + hashData : ''}`;
@@ -201,7 +228,23 @@ class HomePage {
         </div>
       `;
 
-      list.appendChild(link);
+      const exportBtn = document.createElement('button');
+      exportBtn.className = styles.exportButton;
+      exportBtn.title = 'Export vault';
+      exportBtn.innerHTML = `
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      `;
+      exportBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.handleExportVault(vault);
+      });
+
+      item.appendChild(link);
+      item.appendChild(exportBtn);
+      list.appendChild(item);
     });
 
     section.appendChild(list);
@@ -211,6 +254,68 @@ class HomePage {
     const backupUrl = encodeBackupUrl(this.vaults);
     await navigator.clipboard.writeText(backupUrl);
     eventBus.emit('toast:show', 'Backup link copied!');
+  }
+
+  private async handleExportVault(vault: VaultRef): Promise<void> {
+    try {
+      await downloadVaultExport(vault);
+      eventBus.emit('toast:show', 'Vault exported!');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Export failed';
+      console.error('Export failed:', err);
+      eventBus.emit('toast:show', message);
+    }
+  }
+
+  private async handleImportVault(): Promise<void> {
+    // Create hidden file input
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,.vef.json';
+    input.multiple = false;
+
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+
+      // Parse and validate VEF
+      const result = await parseVEFFromFile(file);
+      if (!result.valid) {
+        eventBus.emit('toast:show', `Invalid file: ${result.error}`);
+        return;
+      }
+
+      // Get existing vault IDs
+      const existingIds = await getAllVaultIds();
+
+      // Create preview
+      const preview = await createRestorePreview(result.vef, existingIds);
+
+      // Show confirmation dialog
+      if (preview.already_exists) {
+        eventBus.emit('toast:show', 'Vault already exists');
+        return;
+      }
+
+      // Restore the vault
+      const restoreResult = await restoreVaultFromVEF(
+        result.vef,
+        existingIds,
+        saveVaultRef,
+      );
+
+      if (restoreResult.success && !restoreResult.skipped) {
+        // Reload vaults and update UI
+        await this.loadVaults();
+        eventBus.emit('toast:show', 'Vault restored!');
+      } else if (restoreResult.skipped) {
+        eventBus.emit('toast:show', 'Vault already exists');
+      } else {
+        eventBus.emit('toast:show', `Restore failed: ${restoreResult.error}`);
+      }
+    };
+
+    input.click();
   }
 }
 

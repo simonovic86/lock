@@ -221,3 +221,59 @@
   height: 0.875rem;
 }
 
+.buttonGroup {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.importButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-elevated);
+  border: 1px solid var(--color-border);
+  color: var(--zinc-400);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.importButton:hover {
+  color: var(--zinc-200);
+  border-color: var(--color-border-hover);
+}
+
+.vaultItem {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.vaultItem .vaultLink {
+  flex: 1;
+  min-width: 0;
+}
+
+.exportButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  color: var(--zinc-500);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  flex-shrink: 0;
+}
+
+.exportButton:hover {
+  color: var(--zinc-300);
+  border-color: var(--color-border-hover);
+  background: var(--color-surface-elevated);
+}
+
