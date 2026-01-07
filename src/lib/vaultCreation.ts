@@ -44,6 +44,7 @@ import { generateKey, exportKey, encrypt } from './crypto';
 import { toBase64 } from './encoding';
 import { initLit, encryptKeyWithTimelock } from './lit';
 import { saveVaultRef, VaultRef } from './storage';
+import { resolveVaultName } from './vaultName';
 
 // ============================================================================
 // Types
@@ -59,6 +60,9 @@ export interface VaultDraft {
 
   /** If true, vault self-destructs after first read */
   destroyAfterRead: boolean;
+
+  /** Optional user-defined name (local metadata only) */
+  name?: string;
 
   /**
    * SENSITIVE: The raw symmetric key used for encryption.
@@ -88,6 +92,9 @@ export interface CreateDraftInput {
 
   /** Whether to destroy after first read */
   destroyAfterRead: boolean;
+
+  /** Optional user-defined name (local metadata only) */
+  name?: string;
 }
 
 // ============================================================================
@@ -109,17 +116,19 @@ export interface CreateDraftInput {
  * - Either calling armDraft() or wipeDraft()
  */
 export async function createDraft(input: CreateDraftInput): Promise<VaultDraft> {
-  const { secret, unlockTime, destroyAfterRead } = input;
+  const { secret, unlockTime, destroyAfterRead, name } = input;
 
   // Generate key and encrypt locally - no network calls
   const key = await generateKey();
   const rawKey = await exportKey(key);
   const encryptedData = await encrypt(secret, key);
   const inlineData = toBase64(encryptedData);
+  const resolvedName = resolveVaultName(name);
 
   return {
     unlockTime,
     destroyAfterRead,
+    name: resolvedName,
     rawKey,
     encryptedData,
     inlineData,
@@ -141,6 +150,8 @@ export async function createDraft(input: CreateDraftInput): Promise<VaultDraft> 
  * This is the POINT OF NO RETURN.
  */
 export async function armDraft(draft: VaultDraft): Promise<VaultRef> {
+  const resolvedName = resolveVaultName(draft.name);
+
   // Initialize Lit Protocol
   await initLit();
 
@@ -157,6 +168,7 @@ export async function armDraft(draft: VaultDraft): Promise<VaultRef> {
     litEncryptedKey: encryptedKey,
     litKeyHash: encryptedKeyHash,
     createdAt: Date.now(),
+    name: resolvedName,
     inlineData: draft.inlineData,
     destroyAfterRead: draft.destroyAfterRead,
   };
@@ -186,4 +198,3 @@ export function wipeDraft(draft: VaultDraft): void {
     draft.encryptedData.fill(0);
   }
 }
-

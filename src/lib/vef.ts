@@ -13,6 +13,7 @@
  */
 
 import { VaultRef } from './storage';
+import { resolveVaultNameForCreatedAt } from './vaultName';
 import { toBase64, fromBase64 } from './encoding';
 
 // =============================================================================
@@ -287,8 +288,9 @@ export async function exportVault(
     },
   };
 
-  if (vault.name) {
-    vef.name = vault.name;
+  const resolvedName = resolveVaultNameForCreatedAt(vault.name, vault.createdAt);
+  if (resolvedName) {
+    vef.name = resolvedName;
   }
 
   if (vault.destroyAfterRead) {
@@ -534,7 +536,7 @@ export async function createRestorePreview(
 ): Promise<VEFRestorePreview> {
   return {
     vault_id: vef.vault_id,
-    name: vef.name,
+    name: resolveVaultNameForCreatedAt(vef.name, vef.created_at),
     unlock_timestamp: vef.unlock_timestamp,
     created_at: vef.created_at,
     status: getVaultStatus(vef.unlock_timestamp),
@@ -828,4 +830,3 @@ export async function restoreFromBundle(
 
   return result;
 }
-
