@@ -14,6 +14,7 @@ import { importKey, decryptToString } from './lib/crypto';
 import { decodeVaultFromHash } from './lib/share';
 import { getFriendlyError } from './lib/errors';
 import { eventBus } from './lib/component';
+import { resolveVaultNameForCreatedAt } from './lib/vaultName';
 import styles from './styles/vault-page.module.css';
 
 type State =
@@ -165,6 +166,11 @@ class VaultPage {
     const card = document.createElement('div');
     card.className = styles.card;
 
+    const title = document.createElement('h2');
+    title.className = styles.title;
+    title.textContent = resolveVaultNameForCreatedAt(this.vault.name, this.vault.createdAt);
+    card.appendChild(title);
+
     if (this.vault.destroyAfterRead) {
       const notice = document.createElement('p');
       notice.className = `${styles.destroyNotice} ${styles.cardCenter}`;
@@ -200,14 +206,27 @@ class VaultPage {
 
     const card = document.createElement('div');
     card.className = `${styles.card} ${styles.cardCenter}`;
-    card.innerHTML = `
-      <div class="${styles.iconContainerLg}">
-        <svg class="${styles.iconLg} ${styles.iconLight}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-        </svg>
-      </div>
-      ${this.vault.destroyAfterRead ? `<p class="${styles.destroyNotice}">Destroyed after reading</p>` : ''}
+
+    const iconContainer = document.createElement('div');
+    iconContainer.className = styles.iconContainerLg;
+    iconContainer.innerHTML = `
+      <svg class="${styles.iconLg} ${styles.iconLight}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+      </svg>
     `;
+    card.appendChild(iconContainer);
+
+    const title = document.createElement('h2');
+    title.className = styles.title;
+    title.textContent = resolveVaultNameForCreatedAt(this.vault.name, this.vault.createdAt);
+    card.appendChild(title);
+
+    if (this.vault.destroyAfterRead) {
+      const notice = document.createElement('p');
+      notice.className = styles.destroyNotice;
+      notice.textContent = 'Destroyed after reading';
+      card.appendChild(notice);
+    }
 
     const unlockBtn = document.createElement('button');
     unlockBtn.className = 'btn-primary';
@@ -236,6 +255,13 @@ class VaultPage {
 
     const card = document.createElement('div');
     card.className = styles.card;
+
+    if (this.vault) {
+      const title = document.createElement('h2');
+      title.className = styles.title;
+      title.textContent = resolveVaultNameForCreatedAt(this.vault.name, this.vault.createdAt);
+      card.appendChild(title);
+    }
 
     const secretContainer = document.createElement('div');
     secretContainer.className = styles.secretContainer;
@@ -421,4 +447,3 @@ class VaultPage {
 // Initialize page
 const vaultPage = new VaultPage();
 vaultPage.init();
-

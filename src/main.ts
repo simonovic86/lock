@@ -11,6 +11,7 @@ import { confirm } from './components-vanilla/ConfirmModal';
 import { getAllVaultRefs, getAllVaultIds, saveVaultRef, VaultRef } from './lib/storage';
 import { isUnlockable } from './lib/lit';
 import { eventBus } from './lib/component';
+import { resolveVaultNameForCreatedAt } from './lib/vaultName';
 import {
   downloadVaultExport,
   downloadBackupBundle,
@@ -178,7 +179,7 @@ class HomePage {
               </svg>
             </div>
             <div class="${styles.vaultInfo}">
-              <p class="${styles.vaultName}">${vault.name || (vault.id ? `Vault ${vault.id.slice(0, 8)}` : 'Vault')}</p>
+              <p class="${styles.vaultName}">${resolveVaultNameForCreatedAt(vault.name, vault.createdAt)}</p>
               <p class="${styles.vaultStatus}">${unlockable ? 'Ready to unlock' : `Unlocks ${new Date(vault.unlockTime).toLocaleDateString()}`}</p>
             </div>
           </div>
@@ -326,4 +327,3 @@ class HomePage {
 // Initialize page
 const homePage = new HomePage();
 homePage.init();
-
